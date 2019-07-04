@@ -16,7 +16,7 @@ b = 0
 adc = pyb.ADC(pyb.Pin.board.X12)
 t = pyb.Timer(1,freq=freqmax)
 usb = pyb.USB_VCP()
-led = pyb.LED(4)
+led = pyb.LED(1)
 
 #Wait for serial connection to open
 while True:
@@ -34,24 +34,21 @@ led.toggle()
 l = [0]*int(freqmax*m_time)
 buf = array("H",l)
 s1 = 'end'
-#endbuff = array('b',[1,2,3,4,5])
 endbuff = bytes('end','utf-8')
-list_time = []
+
+#list_time = []
 
 
 
 #Take readings
-for rd in range(10):
-    #a = utime.ticks_us()
+for x in range(1000):
     adc.read_timed(buf,t)
     usb.write(buf)
-    usb.write(bytes('pos','utf-8'))
     #usb.write(bytes('pos','utf-8'))
-    #usb.write(endbuff)
+    time.sleep(0.01)
     #b = utime.ticks_us() - a
-    #list_time.append(b)
 
-usb.write(endbuff)#end condition for pyserial read.
+#usb.write(endbuff)#end condition for pyserial read.
 
 
 #end flash
