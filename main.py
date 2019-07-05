@@ -8,6 +8,7 @@ import utime
 usb = pyb.USB_VCP()
 
 while True:
+    
 
     if mode == 'ADC_read':
         freqmax = 1000000

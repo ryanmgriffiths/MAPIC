@@ -30,4 +30,3 @@ plt.show()
 
 
 numpy.savetxt('data.txt',data)
-
