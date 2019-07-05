@@ -3,61 +3,55 @@
 import pyb
 import time
 from array import array
+import utime
 
-#Filtering - likely unnecessary
-"""
-def fltlow(element):
-    return element > 1000
-"""
-
-#constants
+#measurement time constants
 m_time = 0.001
 freqmax = 1000000
+#Diagnositcs constants
 a = 0
 b = 0
 
 #Define objects
 adc = pyb.ADC(pyb.Pin.board.X12)
-#rtc = RTC()
 t = pyb.Timer(1,freq=freqmax)
 usb = pyb.USB_VCP()
-time.sleep(10)
-well = usb.isconnected()
+led = pyb.LED(1)
 
+#Wait for serial connection to open
+while True:
+    if usb.isconnected():
+        break
+    else:
+        time.sleep(0.5)
 
-#Interrupt code
-
-"""
-l = [0]*10
-buf = array("H",l)
-
-
-def callback(line):
-    adc.read_timed(buf,t)
-    print(buf)
-
-extint = pyb.ExtInt(pyb.Pin.board.X12, pyb.ExtInt.IRQ_RISING, pyb.Pin.PULL_NONE, callback)
-"""
-
+#Successful connection
+led.toggle()
+time.sleep(0.5)
+led.toggle()
 
 #Setup variables/file/buffer
-
 l = [0]*int(freqmax*m_time)
 buf = array("H",l)
+s1 = 'end'
+endbuff = bytes('end','utf-8')
 
-list_time = []
+#list_time = []
 
-for rd in range(1):
 
-    a = utime.ticks_us()
+
+#Take readings
+for x in range(1000):
     adc.read_timed(buf,t)
     usb.write(buf)
-    b = utime.ticks_us() - a
-    list_time.append(b)
+    #usb.write(bytes('pos','utf-8'))
+    time.sleep(0.01)
+    #b = utime.ticks_us() - a
+
+#usb.write(endbuff)#end condition for pyserial read.
 
 
-print('')
-
+#end flash
 led1 = pyb.LED(2)
 led1.on()
 for x in range(15):
