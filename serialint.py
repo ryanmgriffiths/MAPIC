@@ -5,28 +5,30 @@ import numpy
 import matplotlib.pyplot as plt
 import sys
 
-readings = 1000
-data = numpy.zeros((readings,1000),dtype='uint16')
-ser = serial.Serial('COM7', 115200,timeout=10)
-'''a = array('L',[readings])
-ser.write(a)
-print(sys.getsizeof(a))
-'''
-a = time.time()
+ser = serial.Serial('COM4', 115200,timeout=10)
 
-for x in range(readings):
-    read = ser.read(2000)
-    #data[x,:] = numpy.frombuffer(read,dtype='uint16')
+def ADC():
+    readings = input('Size >')
+    data = numpy.zeros((readings,1000),dtype='uint16')
 
-b = time.time()
-print('Done!',b-a)
+    for x in range(readings):
+        read = ser.read(2000)
+        data[x,:] = numpy.frombuffer(read,dtype='uint16')
 
-datalong = data.flatten()
-x = numpy.arange(len(datalong))
+    return data
 
-plt.figure()
-plt.plot(x,datalong)
-plt.show()
+while True:
+
+    cmd = bytes(input('>'),'utf-8')
+    if cmd == 'ADC_r'":
+        ADC()
+    
+    elif cmd == 'I2C_r':
+        while ser.inwaiting == 0:
+            pass
+        print(int(ser.readline()))
+    elif cmd == 'I2c_w': 
+    else:
+        ser.close()
 
 
-numpy.savetxt('data.txt',data)
