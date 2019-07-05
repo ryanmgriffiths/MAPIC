@@ -23,11 +23,18 @@ while True:
     if usb.isconnected():
         break
     else:
-        time.sleep(0.5)
+        time.sleep(0.1)
 
 #Successful connection
 led.toggle()
-time.sleep(0.5)
+time.sleep(1)
+
+'''
+readings = usb.recv(4,timeout=5000)
+readings = array('L',readings)
+'''
+
+readings=1000
 led.toggle()
 
 #Setup variables/file/buffer
@@ -38,18 +45,10 @@ endbuff = bytes('end','utf-8')
 
 #list_time = []
 
-
-
 #Take readings
-for x in range(1000):
+for x in range(readings):
     adc.read_timed(buf,t)
     usb.write(buf)
-    #usb.write(bytes('pos','utf-8'))
-    time.sleep(0.01)
-    #b = utime.ticks_us() - a
-
-#usb.write(endbuff)#end condition for pyserial read.
-
 
 #end flash
 led1 = pyb.LED(2)

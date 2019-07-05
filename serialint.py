@@ -3,26 +3,31 @@ import time
 from array import array
 import numpy
 import matplotlib.pyplot as plt
+import sys
 
-data = numpy.zeros((1000,1000),dtype='uint8')
+readings = 1000
+data = numpy.zeros((readings,1000),dtype='uint16')
 ser = serial.Serial('COM7', 115200,timeout=10)
+'''a = array('L',[readings])
+ser.write(a)
+print(sys.getsizeof(a))
+'''
+a = time.time()
 
-for x in range(1000):
-    #raw_data = ser.read_until(bytes('pos','utf-8'))
-    #print(len(raw_data))
-    #if len(raw_data)==2003:
-    #    data[x,:] = numpy.array(array('H',raw_data[:-3]))      
+for x in range(readings):
     read = ser.read(2000)
-    data[x,:] = numpy.frombuffer(read,dtype='uint16')
-    
-    
-print('Done!')
+    #data[x,:] = numpy.frombuffer(read,dtype='uint16')
+
+b = time.time()
+print('Done!',b-a)
 
 datalong = data.flatten()
 x = numpy.arange(len(datalong))
+
 plt.figure()
 plt.plot(x,datalong)
 plt.show()
 
 
 numpy.savetxt('data.txt',data)
+
