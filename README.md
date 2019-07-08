@@ -1,4 +1,4 @@
-##dAPIC Summer Project 2019
+## dAPIC Summer Project 2019
 
 ### Requirements
 
