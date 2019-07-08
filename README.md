@@ -1,10 +1,10 @@
-#dAPIC Summer Project 2019
+##dAPIC Summer Project 2019
 
-## Requirements
+### Requirements
 
-Python 3 and Anaconda package installed on local machine.
-Written for Micropyton v1.11
+* Python 3 and Anaconda package installed on local machine.
+* Written for Micropyton v1.11
 
-## Functionality
+### Functionality
 
 
