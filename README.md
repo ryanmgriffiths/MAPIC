@@ -2,8 +2,8 @@
 
 ### Requirements
 
-* Python 3 and Anaconda package installed on local machine.
-* Written for Micropyton v1.11
+* Python 3 and Anaconda package installed on datalogging device.
+* Micropyton v1.11
 
 ### Functionality
 
