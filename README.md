@@ -2,7 +2,7 @@
 
 ## Summary
 
-A program for interface with the pyboard inside the APIC box. Allowing datalogging from the onboard ADCs as well as remote control of the digital potentiometers.
+A program for interface with the pyboard inside the APIC box. Allowing datalogging from the onboard ADCs as well as remote control of the digital potentiometers on the pulse stretcher circuit.
 
 ### Requirements
 
