@@ -53,26 +53,12 @@ def Is():
 
 def ADC():
     t = pyb.Timer(1,freq=1000000)
-    readings = int.from_bytes(usb.recv(4,timeout=60000),'big')
-
-# ADC TEST CODE, INTERRUPTS OR POLLING HERE.
-
-""" 
-    if mode == 'ADC_read':    
-        
-        t = pyb.Timer(1,freq=1000000)
-        readings=1000
-        led.toggle()
-
-        #Setup variables/file/buffer
-        buf = array("H",[0]*1000)
-
-        #Take readings
-        for x in range(readings):
-            adc.read_timed(buf,t)
-            usb.write(buf)
-"""
-
+    n_reads = int.from_bytes(usb.recv(4,timeout=60000),'big')
+    buf = array("H",[0]*1000)
+    for x in range(n_reads):
+        adc.read_timed(buf,t)
+        usb.write(buf)
+    return None
 
 while True:
 
@@ -94,4 +80,3 @@ while True:
     else:
         pass
     led.toggle()
-
