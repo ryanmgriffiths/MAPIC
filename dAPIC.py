@@ -4,19 +4,11 @@ from array import array
 import numpy
 import matplotlib.pyplot as plt
 
-
-#import sys
-#import warnings
-
 ser = serial.Serial('COM7', 115200,timeout=10)
 
-
 while True:
-
     cmd = input('>')
-
     if cmd == 'Ir':
-
         sercom = bytearray([0,0])
         address = input('gain/width:\n>')
         
@@ -24,7 +16,6 @@ while True:
             address = 0
         elif address == 'width':
             address = 1
-
         sercom[1] = address
 
         ser.write(sercom)
@@ -52,22 +43,21 @@ while True:
         print(ser.read(1))
     
     elif cmd == 'A':
+        data = numpy.zeros((num_reads,1000),dtype='uint16')
         sercom = bytearray([2,0])
         reads = int(input('Readings:\n>'))
         num_reads = (reads).to_bytes(4,byteorder='big')
         ser.write(sercom)
         ser.write(num_reads)
-        data = numpy.zeros((num_reads,1000),dtype='uint16')
         
         for x in range(num_reads):
             read = ser.read(2000)
             data[x,:] = numpy.frombuffer(read,dtype='uint16')
+        
         numpy.savetxt('data.txt',data)
+    
     else:
         print('Invalid command.')
-    
-    
-    print('Complete')
     
     ser.reset_input_buffer()
     ser.reset_output_buffer()

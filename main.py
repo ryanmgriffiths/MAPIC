@@ -26,6 +26,11 @@ A = bytearray([2,0]) #ADC polling
 
 # Error Codes
 
+def zsupp(buff):
+    if buff > 800:
+        return True
+    else:
+        return False
 
 def Ir(address):
     if i2c.is_ready(address):
@@ -57,7 +62,7 @@ def ADC():
     buf = array("H",[0]*1000)
     for x in range(n_reads):
         adc.read_timed(buf,t)
-        usb.write(buf)
+        usb.write(filter(zsupp,buf))
     return None
 
 while True:
