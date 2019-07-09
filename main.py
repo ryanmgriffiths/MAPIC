@@ -5,49 +5,55 @@ from pyb import USB_VCP
 from pyb import I2C
 from pyb import ADC
 from array import array
+from pyb import LED
+import time
+from machine import Pin
 
+led = LED(1)
 usb = USB_VCP()
+i2c = I2C(1, I2C.MASTER,baudrate=400000)
 
-while True:
+Pin('PULL_SCL', Pin.OUT, value=1) # enable 5.6kOhm X9/SCL pull-up
+Pin('PULL_SDA', Pin.OUT, value=1) # enable 5.6kOhm X10/SDA pull-up
 
-    while usb.any() == False:
-        pass
-    mode = usb.readline().decode('utf-8')
+# Command Codes
+Ir0 = bytearray([0,0]) #Read gain pot
+Ir1 = bytearray([0,1]) #Read width pot
+Is = bytearray([0,2]) #Relay I2C scan
+Iw0 = bytearray([1,0]) #Write gain pot
+Iw1 = bytearray([1,1]) #Write width pot
+A = bytearray([2,0]) #ADC polling
 
-    if mode == 'I2C_w': # Write to I2C chips
+# Error Codes
 
-        address = usb.readline().decode('utf-8')
-        value = int.from_bytes(usb.readline())
-        i2c = I2C(1, I2C.MASTER,baudrate=400000)
-        
-        if address == 'gain':
-            address = 0x2C
-            b = bytearray([0x00,value])
-            i2c.send(b,addr=address)
 
-        elif address == 'width':
-            pass
-            
-        else:
-            pass
-
-    elif mode == 'I2C_r': # Read from I2C chips
-        address = usb.readline().decode('utf-8')
-        i2c = I2C(1, I2C.MASTER,baudrate=400000)    
-
-        if address == 'gain':
-            address = 0x2C
-            recv = i2c.recv(1,addr=0x2C)
-            usb.write(recv)
-        
-        elif address == 'width':
-            pass
-            
-        else:
-            pass
-
+def Ir(address):
+    if i2c.is_ready(address):
+        recv = i2c.recv(1,addr=address)
+        usb.write(recv)
     else:
         pass
+    return None
+
+def Iw(address):
+    if i2c.is_ready(address):
+        value = int.from_bytes(usb.recv(1,timeout=60000),'big')
+        b = bytearray([0x00,value])
+        i2c.send(b,addr=address)
+    else:
+        pass
+    return None
+
+def Is():
+    scan = bytearray(1)
+    if i2c.scan() != []:
+        scan[0] = i2c.scan()[0]
+    usb.write(scan)
+    return None
+
+def ADC():
+    t = pyb.Timer(1,freq=1000000)
+    readings = int.from_bytes(usb.recv(4,timeout=60000),'big')
 
 # ADC TEST CODE, INTERRUPTS OR POLLING HERE.
 
@@ -66,3 +72,26 @@ while True:
             adc.read_timed(buf,t)
             usb.write(buf)
 """
+
+
+while True:
+
+    mode = usb.recv(2,timeout=60000)
+    led.toggle()
+    
+    if mode==Ir0:
+        Ir(0x2C)
+    elif mode==Ir1:
+        Ir(0x2B)
+    elif mode==Is:
+        Is()
+    elif mode==Iw0:
+        Iw(0x2C)
+    elif mode == Iw0:
+        Iw(0x2B)
+    elif mode == A:
+        ADC()
+    else:
+        pass
+    led.toggle()
+
