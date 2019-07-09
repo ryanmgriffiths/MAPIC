@@ -1,22 +1,62 @@
 # main.py -- put your code here!
 #Import relevant modules
 import pyb
-import time
+
+from pyb import I2C
+from pyb import ADC
+from machine import Pin
+
 from array import array
-import utime
 
 usb = pyb.USB_VCP()
 
 while True:
 
-    
-    mode =
+    while usb.any() == False:
+        pass
+    mode = usb.readline().decode('utf-8')
 
-    if mode == 'ADC_read':
-        freqmax = 1000000
-        t = pyb.Timer(1,freq=freqmax)
+    if mode == 'I2C_w': # Write to I2C chips
 
+        address = usb.readline().decode('utf-8')
+        value = int.from_bytes(usb.readline())
+        i2c = I2C(1, I2C.MASTER,baudrate=400000)
+        
+        if address == 'gain':
+            address = 0x2C
+            b = bytearray([0x00,value])
+            i2c.send(b,addr=address)
 
+        elif address == 'width':
+            pass
+            
+        else:
+            pass
+
+    elif mode == 'I2C_r': # Read from I2C chips
+        address = usb.readline().decode('utf-8')
+        i2c = I2C(1, I2C.MASTER,baudrate=400000)    
+
+        if address == 'gain':
+            address = 0x2C
+            recv = i2c.recv(1,addr=0x2C)
+            usb.write(recv)
+        
+        elif address == 'width':
+            pass
+            
+        else:
+            pass
+
+    else:
+        pass
+
+# ADC TEST CODE, INTERRUPTS OR POLLING HERE.
+
+""" 
+    if mode == 'ADC_read':    
+        
+        t = pyb.Timer(1,freq=1000000)
         readings=1000
         led.toggle()
 
@@ -27,27 +67,7 @@ while True:
         for x in range(readings):
             adc.read_timed(buf,t)
             usb.write(buf)
-
-    elif mode == 'I2C_change':
-        
-        if:
-        
-        elif:
-
-            i2c = pyb.I2C(1, I2C.MASTER,baudrate=400000)
-
-            b = bytearray([0x00,255])
-
-    elif mode == 'I2C_read':
-        
-        i2c = pyb.I2C(1, I2C.MASTER,baudrate=400000)
-
-
-
-
-    else:
-        pass
-
+"""
 
 
 

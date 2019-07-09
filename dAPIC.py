@@ -20,36 +20,28 @@ def ADC():
 
     return data
 
-
-
 while True:
 
     cmd = bytes(input('>'),'utf-8')
-    
-    if cmd == 'ADC_r'":
-        ADC()
-    
-    elif cmd == 'I2C_r':
-        while ser.inwaiting == 0:
+
+    if cmd == 'I2C_r':
+        
+        address = address = input('gain/width:\n>')
+        ser.write('I2C_r\n')
+        ser.write(address+'\n')
+        while ser.inwaiting() == 0:
             pass
-        print(int(ser.readline()))
+        print(int.from_bytes(ser.readline(),'big'))
     
     elif cmd == 'I2C_w':
-        address = input('gain/width?\n')
-
-        if address=='gain':
-            address = gain
-        elif address=='width':
-            address = width
-        else:
-            print('Invalid name.')
-
-        ser.write('I2C_w' + gain)
-
         
-        b = bytearray([0x00,255])
+        address = input('gain/width:\n>')
+        value = int(input('Value:\n>'))
+        ser.write('I2C_w\n')
+        ser.write(address+'\n')
+        ser.write(bytes(value))
 
-    
     else:
         print('Invalid command.') 
+    
     print('Complete')
