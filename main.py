@@ -1,14 +1,12 @@
 # main.py -- put your code here!
 #Import relevant modules
-import pyb
 
+from pyb import USB_VCP
 from pyb import I2C
 from pyb import ADC
-from machine import Pin
-
 from array import array
 
-usb = pyb.USB_VCP()
+usb = USB_VCP()
 
 while True:
 
@@ -68,7 +66,3 @@ while True:
             adc.read_timed(buf,t)
             usb.write(buf)
 """
-
-
-
-    
