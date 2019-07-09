@@ -8,17 +8,14 @@ import utime
 usb = pyb.USB_VCP()
 
 while True:
+
     
+    mode =
 
     if mode == 'ADC_read':
         freqmax = 1000000
         t = pyb.Timer(1,freq=freqmax)
 
-        #Successful connection
-        '''
-        readings = usb.recv(4,timeout=5000)
-        readings = array('L',readings)
-        '''
 
         readings=1000
         led.toggle()
@@ -32,6 +29,7 @@ while True:
             usb.write(buf)
 
     elif mode == 'I2C_change':
+        
         if:
         
         elif:

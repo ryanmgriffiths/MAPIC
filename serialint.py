@@ -4,8 +4,11 @@ from array import array
 import numpy
 import matplotlib.pyplot as plt
 import sys
+import warnings
 
 ser = serial.Serial('COM4', 115200,timeout=10)
+gain = '0x2C'
+width = 0x2C
 
 def ADC():
     readings = input('Size >')
@@ -17,9 +20,12 @@ def ADC():
 
     return data
 
+
+
 while True:
 
     cmd = bytes(input('>'),'utf-8')
+    
     if cmd == 'ADC_r'":
         ADC()
     
@@ -27,8 +33,23 @@ while True:
         while ser.inwaiting == 0:
             pass
         print(int(ser.readline()))
-    elif cmd == 'I2c_w': 
+    
+    elif cmd == 'I2C_w':
+        address = input('gain/width?\n')
+
+        if address=='gain':
+            address = gain
+        elif address=='width':
+            address = width
+        else:
+            print('Invalid name.')
+
+        ser.write('I2C_w' + gain)
+
+        
+        b = bytearray([0x00,255])
+
+    
     else:
-        ser.close()
-
-
+        print('Invalid command.') 
+    print('Complete')
