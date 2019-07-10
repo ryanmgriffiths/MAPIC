@@ -29,58 +29,58 @@ def I(address,method):
 
 def A():
 '''ADC control for pyboard, how many  '''
-    elif cmd == 'A':
+elif cmd == 'A':
 
-        reads = int(input('Readings:\n>'))
-        breads = reads.to_bytes(4,'little',signed=False)
-        data = numpy.zeros((reads,1000),dtype='uint16')
-        
-        sercom = bytearray([2,0])
-        read = bytearray(2000)
-        ser.write(sercom)
-        ser.write(breads)
+reads = int(input('Readings:\n>'))
+breads = reads.to_bytes(4,'little',signed=False)
+data = numpy.zeros((reads,1000),dtype='uint16')
 
-        for x in range(reads):
-            ser.readinto(read)
-            data[x,:] = numpy.frombuffer(read,dtype='uint16')
-        else:
-            print('Successful datalogging!')
-        
+sercom = bytearray([2,0])
+read = bytearray(2000)
+ser.write(sercom)
+ser.write(breads)
 
-        plt.figure()
-        
-        datalong = data.flatten()
-        x = numpy.arange(len(datalong))
-        plt.plot(x,datalong)
-        
-        plt.show()
-
-        numpy.savetxt('data.txt',data)
-
-    elif cmd == 'AD':
-        reads = 1000
-        data = numpy.zeros((reads,1000),dtype='uint16')
-        sercom = bytearray([2,1])
-        read = bytearray(2000)
-        ser.write(sercom)
-        d0 = datetime.datetime.now()
+for x in range(reads):
+    ser.readinto(read)
+    data[x,:] = numpy.frombuffer(read,dtype='uint16')
+else:
+    print('Successful datalogging!')
 
 
-        for x in range(reads):
-            ser.readinto(read)
-            data[:] = numpy.frombuffer(read,dtype='uint16')
-        
-        d1 = datetime.datetime.now()
-        d = d1-d0
-        d = d.total_seconds()
-        print(d)
+plt.figure()
 
-    elif cmd == 'Ic':
-        pass
-    elif cmd == 'R':
-        ser = serial.Serial('COM7', 115200,timeout=0.5)
-    else:
-        print('Invalid command.')
-    
-    ser.reset_input_buffer()
-    ser.reset_output_buffer()
+datalong = data.flatten()
+x = numpy.arange(len(datalong))
+plt.plot(x,datalong)
+
+plt.show()
+
+numpy.savetxt('data.txt',data)
+
+elif cmd == 'AD':
+reads = 1000
+data = numpy.zeros((reads,1000),dtype='uint16')
+sercom = bytearray([2,1])
+read = bytearray(2000)
+ser.write(sercom)
+d0 = datetime.datetime.now()
+
+
+for x in range(reads):
+    ser.readinto(read)
+    data[:] = numpy.frombuffer(read,dtype='uint16')
+
+d1 = datetime.datetime.now()
+d = d1-d0
+d = d.total_seconds()
+print(d)
+
+elif cmd == 'Ic':
+pass
+elif cmd == 'R':
+ser = serial.Serial('COM7', 115200,timeout=0.5)
+else:
+print('Invalid command.')
+
+ser.reset_input_buffer()
+ser.reset_output_buffer()
