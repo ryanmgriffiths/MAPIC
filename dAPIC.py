@@ -3,8 +3,9 @@ import time
 from array import array
 import numpy
 import matplotlib.pyplot as plt
+import datetime
 
-ser = serial.Serial('COM7', 115200,timeout=10)
+ser = serial.Serial('COM7', 115200,timeout=0.5)
 
 while True:
     cmd = input('>')
@@ -58,9 +59,40 @@ while True:
             data[x,:] = numpy.frombuffer(read,dtype='uint16')
         else:
             print('Successful datalogging!')
+        
+
+        plt.figure()
+        
+        datalong = data.flatten()
+        x = numpy.arange(len(datalong))
+        plt.plot(x,datalong)
+        
+        plt.show()
 
         numpy.savetxt('data.txt',data)
-    
+
+    elif cmd == 'AD':
+        reads = 1000
+        data = numpy.zeros((reads,1000),dtype='uint16')
+        sercom = bytearray([2,1])
+        read = bytearray(2000)
+        ser.write(sercom)
+        d0 = datetime.datetime.now()
+
+
+        for x in range(reads):
+            ser.readinto(read)
+            data[:] = numpy.frombuffer(read,dtype='uint16')
+        
+        d1 = datetime.datetime.now()
+        d = d1-d0
+        d = d.total_seconds()
+        print(d)
+
+    elif cmd == 'Ic':
+        pass
+    elif cmd == 'R':
+        ser = serial.Serial('COM7', 115200,timeout=0.5)
     else:
         print('Invalid command.')
     

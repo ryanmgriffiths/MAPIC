@@ -15,6 +15,8 @@ i2c = I2C(1, I2C.MASTER,baudrate=400000)
 adc = ADC(Pin('X12'))
 Pin('PULL_SCL', Pin.OUT, value=1) # enable 5.6kOhm X9/SCL pull-up
 Pin('PULL_SDA', Pin.OUT, value=1) # enable 5.6kOhm X10/SDA pull-up
+t = pyb.Timer(1,freq=1000000)
+usb.setinterrupt(-1)
 
 # Command Codes
 Ir0 = bytearray([0,0]) #Read gain pot
@@ -23,8 +25,10 @@ Is = bytearray([0,2]) #Relay I2C scan
 Iw0 = bytearray([1,0]) #Write gain pot
 Iw1 = bytearray([1,1]) #Write width pot
 A = bytearray([2,0]) #ADC polling
+AD = bytearray([2,1]) #ADC time diagnostics.
 
 # Error Codes
+
 
 def zsupp(buff):
     if buff > 800:
@@ -59,18 +63,24 @@ def Is():
     return None
 
 def ADC():
-    t = pyb.Timer(1,freq=1000000)
     n_reads = int.from_bytes(usb.recv(4,timeout=1000),'little')
     buf = array("H",[0]*1000)
-    for x in range(n_reads):
+    for term in range(n_reads):
         adc.read_timed(buf,t)
-        usb.write(buf)#filter(zsupp,buf))
+        usb.write(buf)
+    return None
+
+def ADC_diag():
+    reads = 1000
+    buf = array("H",[0]*1000)
+    for term in range(reads):
+        adc.read_timed(buf,t)
+        usb.write(buf)
     return None
 
 while True:
 
     mode = usb.recv(2,timeout=60000)
-    #led.toggle()
     
     if mode==Ir0:
         Ir(0x2C)
@@ -84,6 +94,7 @@ while True:
         Iw(0x2B)
     elif mode == A:
         ADC()
+    elif mode ==AD:
+        ADC_diag()
     else:
         pass
-    #led.toggle()
