@@ -20,7 +20,7 @@ while True:
 
         ser.write(sercom)
         reply = ser.read(1)
-        print(int.from_bytes(reply,'big'))
+        print(int.from_bytes(reply,'little'))
 
     elif cmd == 'Iw':
 
@@ -43,17 +43,22 @@ while True:
         print(ser.read(1))
     
     elif cmd == 'A':
-        data = numpy.zeros((num_reads,1000),dtype='uint16')
-        sercom = bytearray([2,0])
+
         reads = int(input('Readings:\n>'))
-        num_reads = (reads).to_bytes(4,byteorder='big')
+        breads = reads.to_bytes(4,'little',signed=False)
+        data = numpy.zeros((reads,1000),dtype='uint16')
+        
+        sercom = bytearray([2,0])
+        read = bytearray(2000)
         ser.write(sercom)
-        ser.write(num_reads)
-        
-        for x in range(num_reads):
-            read = ser.read(2000)
+        ser.write(breads)
+
+        for x in range(reads):
+            ser.readinto(read)
             data[x,:] = numpy.frombuffer(read,dtype='uint16')
-        
+        else:
+            print('Successful datalogging!')
+
         numpy.savetxt('data.txt',data)
     
     else:

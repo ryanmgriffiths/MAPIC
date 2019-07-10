@@ -12,7 +12,7 @@ from machine import Pin
 led = LED(1)
 usb = USB_VCP()
 i2c = I2C(1, I2C.MASTER,baudrate=400000)
-
+adc = ADC(Pin('X12'))
 Pin('PULL_SCL', Pin.OUT, value=1) # enable 5.6kOhm X9/SCL pull-up
 Pin('PULL_SDA', Pin.OUT, value=1) # enable 5.6kOhm X10/SDA pull-up
 
@@ -42,7 +42,7 @@ def Ir(address):
 
 def Iw(address):
     if i2c.is_ready(address):
-        value = int.from_bytes(usb.recv(1,timeout=60000),'big')
+        value = int.from_bytes(usb.recv(1,timeout=60000),'little')
         b = bytearray([0x00,value])
         i2c.send(b,addr=address)
     else:
@@ -53,22 +53,24 @@ def Is():
     scan = bytearray(1)
     if i2c.scan() != []:
         scan[0] = i2c.scan()[0]
+    else:
+        pass
     usb.write(scan)
     return None
 
 def ADC():
     t = pyb.Timer(1,freq=1000000)
-    n_reads = int.from_bytes(usb.recv(4,timeout=60000),'big')
+    n_reads = int.from_bytes(usb.recv(4,timeout=1000),'little')
     buf = array("H",[0]*1000)
     for x in range(n_reads):
         adc.read_timed(buf,t)
-        usb.write(filter(zsupp,buf))
+        usb.write(buf)#filter(zsupp,buf))
     return None
 
 while True:
 
     mode = usb.recv(2,timeout=60000)
-    led.toggle()
+    #led.toggle()
     
     if mode==Ir0:
         Ir(0x2C)
@@ -84,4 +86,4 @@ while True:
         ADC()
     else:
         pass
-    led.toggle()
+    #led.toggle()
