@@ -3,7 +3,7 @@
 def I(address,method):
 '''I2C control of the APIC, I(address,method). Address can be 1,0 and represents the width or gain digital pot (actual address hard coded into python board). Method is read 'r', write 'w', scan's' - check micropython docs for reading and writing to I2C devices. '''
 
-    if address != 1 or 2:
+    if address != 0 or 1:
         raise ValueError('Function only takes addresses 0, 1 for gain, width pots.')
     
     if method == 'r':
