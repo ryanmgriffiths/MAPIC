@@ -10,5 +10,10 @@ A program for interface with the pyboard inside the APIC box. Allowing dataloggi
 * Micropyton v1.11
 * Pyboard PYBD-SF3-W4F2
 
+### Features
+
+* Wifi communication using python socket network module. Operational data transfer rate ~ 20Mb/s.
+* I2C control of two digital potentiometers.
+* 2MSPS ADC readout speed.
 
 
