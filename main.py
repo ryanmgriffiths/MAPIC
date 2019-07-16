@@ -108,7 +108,7 @@ commands = {
     bytes(bytearray([1,0])) : lambda : Iw(0x2C), # Write gain pot
     bytes(bytearray([1,1])) : lambda : Iw(0x2B), # Write width pot
     bytes(bytearray([2,0])) : ADCp,              # ADC polling
-    bytes(bytearray([2,0])) : ADCi,              # ADC interrupts
+    bytes(bytearray([2,1])) : ADCi,              # ADC interrupts
     bytes(bytearray([3,3])) : test,              # communication test
 }
 
