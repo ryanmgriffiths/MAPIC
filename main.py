@@ -83,6 +83,7 @@ def ADCi():
     pin_i.irq(handler=callback,trigger=Pin.IRQ_RISING)
     while const < mnum:
         pass
+    const = 0
     return None
 
 def test():
