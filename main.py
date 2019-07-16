@@ -112,7 +112,6 @@ commands = {
     bytes(bytearray([3,3])) : test,              # communication test
 }
 
-
 # MAIN PROGRAM
 while True:
     mode = usb.recv(2,timeout=60000)
