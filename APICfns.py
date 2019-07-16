@@ -7,7 +7,6 @@ import socket
 import datetime
 import numpy
 
-
 class APIC:
     def __init__(self, address,tout,ipv4):
         self.tout = tout # Timeout
