@@ -2,39 +2,39 @@ from __future__ import division
 import numpy
 import matplotlib.pyplot as plt
 
+raw_data = numpy.loadtxt('datawifi.txt')
+rmsvals = []
+flatdata = raw_data.flatten()
+flatx = numpy.arange(len(flatdata))
 
-def poll_alg(fname):
-    raw_data = numpy.loadtxt(fname)
-    rmsvals = numpy.array([])
-    flatdata = numpy.flatten(raw_data)
+plt.figure()
+plt.plot(flatx,flatdata)
+plt.show()
+plt.close()
 
+selected = numpy.where(flatdata > 250)[0]
+print(selected)
+print(len(selected))
+c = 0
 
-    sliced = numpy.array([])
-
-    for idx,x in enumerate(flatdata):
-        
-        if x > 200 and x not in sliced:
-            del sliced[:]
-            start = idx
-            val = x
-            numpy.append(sliced,val)
-            v = 1
-            
-            while val > 200:
-                numpy.append(sliced,flatdata[idx+v])
-                v = v + 1
-            
-            rmsval = numpy.sqrt(numpy.average(sliced**2))
-            numpy.append(rmsvals,rmsval)
-        
-        elif x > 200 and x in sliced:
-            pass
-        
+for idx, x in enumerate(selected):
+    try:
+        if selected[idx + 1] ==  x + 1:
+            c = c + 1 
         else:
-            pass
+            sliced = flatdata[selected[idx-c]:selected[idx]]
+            print(sliced)
+            rmsval = numpy.sqrt(numpy.average(sliced**2))
+            print(rmsval)
+            rmsvals.append(rmsval)
+            c=0
+    except:
+        print('exception!')
 
-    plt.figure()
-    plt.hist(x,20)
-    plt.show()
-    plt.savefig('histogram.png')
-def irq
+plt.figure()
+plt.hist(1.8*(numpy.array(rmsvals)/4096),50)
+plt.ylabel('Frequency')
+plt.xlabel('Voltage (V)')
+plt.savefig('histogram.png')
+plt.show()
+plt.close()
