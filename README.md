@@ -14,6 +14,6 @@ A program for interface with the pyboard inside the APIC box. Allowing dataloggi
 
 * Wifi communication using python socket network module. Operational data transfer rate ~ 20Mb/s.
 * I2C control of two digital potentiometers.
-* 2MSPS ADC readout speed.
+* 2MSPS ADC readout speed: Polling and interrupt routines.
 
 

@@ -4,14 +4,18 @@
 # Modify for wifi integration too!
 import serial
 import socket
+import datetime
+import numpy
+
 
 class APIC:
-    def __init__(self, address,tout):
+    def __init__(self, address,tout,ipv4):
         self.tout = tout # Timeout
         self.address = address #COM port/or dev/tty
+        self.ipv4 = ipv4
         self.ser = serial.Serial(address,115200,timeout=tout)
-        self.reads = 0
-        self.read = bytearray(2000)
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.s.connect(ipv4)
 
     def readI2C(self,pot):
         if pot != 0 or 1:
@@ -42,8 +46,25 @@ class APIC:
         sercom = bytearray([3,3])
         self.ser.write(sercom)
         print(self.ser.read(6))
+
+    def ADC_trig(self,datpts):
+        data = numpy.zeros((datpts,8),dtype='uint16')
+        times = numpy.zeros(datpts,dtype='uint32')  
+        datptsb = datpts.to_bytes(8,'little',signed=False)
+        d0 = datetime.datetime.now()
+        self.s.send(datptsb)
         
-    def ADC_poll(self,datapoints):
-        pass
-    def ADC_trig(self,datapoints):
-        pass
+        for x in range(datpts):
+            self.s.recv_into(readm,16)
+            self.s.recv_into(logtimem,4)
+            data[x,:] = numpy.frombuffer(readm,dtype='uint16')
+            times[x] = int.from_bytes(logtimem,'little')
+
+        d1 = datetime.datetime.now()
+
+        numpy.savetxt('datairq.txt',data)
+        numpy.savetxt('timeirq.txt',times)
+
+        d = d1-d0
+        d = d.total_seconds()
+        print(d)
