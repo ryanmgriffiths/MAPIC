@@ -26,6 +26,7 @@ data = array('H',[0]*8)
 tim = bytearray(4)
 t0 = 0
 
+
 # SET UP WIRELESS ACCESS POINT
 wl_ap = network.WLAN(1)                 # init wlan object
 wl_ap.config(essid='PYBD')              # set AP SSID
@@ -56,7 +57,7 @@ def Ir(address):
         recv = i2c.recv(1,addr=address)
         conn.send(recv)
     else:
-        pass
+        raise Exception
     return None
 
 def Iw(address):
@@ -65,7 +66,7 @@ def Iw(address):
         b = bytearray([0x00,value])
         i2c.send(b,addr=address)
     else:
-        pass
+        raise Exception
     return None
 
 def Is():

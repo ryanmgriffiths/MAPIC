@@ -10,20 +10,22 @@ class APIC:
         self.ipv4 = ipv4
         #self.ser = serial.Serial(address,115200,timeout=tout)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.settimeout(5.0)
         self.sock.connect(ipv4)
 
+
     def readI2C(self,pot):
-        if pot != 0 or 1:
+        if pot != 0 and 1:
             raise ValueError('Function only takes addresses 0, 1 for gain, width pots.')
-        sercom = bytearray([0,address])
+        sercom = bytearray([0,pot])
         self.sock.send(sercom)
-        reply = self.conn.recv(1)
+        reply = self.sock.recv(1)
         print(int.from_bytes(reply,'little'))
 
     def writeI2C(self,pot):
-        if pot != 0 or 1:
+        if pot != 0 and 1:
             raise ValueError('Function only takes addresses 0, 1 for gain, width pots.')
-        sercom = bytearray([1,address])
+        sercom = bytearray([1,pot])
         value = int(input('value\n>'))
         self.sock.send(sercom)
         self.sock.send(bytes([value]))
@@ -31,7 +33,7 @@ class APIC:
     def test(self):
         sercom = bytearray([3,3])
         self.sock.send(sercom)
-        print(self.conn.recv(6))
+        print(self.sock.recv(6))
         print(self.sock.recv(6))
 
     def ADC_trig(self,datpts):
