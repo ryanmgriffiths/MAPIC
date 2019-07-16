@@ -9,6 +9,7 @@ from pyb import LED
 import time
 from machine import Pin
 
+# Object definitions
 led = LED(1)
 usb = USB_VCP()
 i2c = I2C(1, I2C.MASTER,baudrate=400000)
@@ -18,23 +19,11 @@ Pin('PULL_SDA', Pin.OUT, value=1) # enable 5.6kOhm X10/SDA pull-up
 t = pyb.Timer(1,freq=1000000)
 usb.setinterrupt(-1)
 
-# Command Codes
-Ir0 = bytearray([0,0]) #Read gain pot
-Ir1 = bytearray([0,1]) #Read width pot
-Is = bytearray([0,2]) #Relay I2C scan
-Iw0 = bytearray([1,0]) #Write gain pot
-Iw1 = bytearray([1,1]) #Write width pot
-A = bytearray([2,0]) #ADC polling
-AD = bytearray([2,1]) #ADC time diagnostics.
-
-# Error Codes
-
-
-def zsupp(buff):
+"""def zsupp(buff):
     if buff > 800:
         return True
     else:
-        return False
+        return False"""
 
 def Ir(address):
     if i2c.is_ready(address):
@@ -70,31 +59,23 @@ def ADC():
         usb.write(buf)
     return None
 
-def ADC_diag():
-    reads = 1000
-    buf = array("H",[0]*1000)
-    for term in range(reads):
-        adc.read_timed(buf,t)
-        usb.write(buf)
+def test():
+    buf = bytes('Hello!','utf-8')
+    usb.write(buf)
     return None
 
-while True:
+# Command Codes
+commands = {
+    bytes(bytearray([0,0])) : lambda : Ir(0x2C), # Read gain pot
+    bytes(bytearray([0,1])) : lambda : Ir(0x2B), # Read width pot
+    bytes(bytearray([0,2])) : Is,                # Scan I2C
+    bytes(bytearray([1,0])) : lambda : Iw(0x2C), # Write gain pot
+    bytes(bytearray([1,1])) : lambda : Iw(0x2B), # Write width pot
+    bytes(bytearray([2,0])) : ADCp,              # ADC polling
+    bytes(bytearray([2,0])) : ADCi,              # ADC interrupts
+    bytes(bytearray([3,3])) : test,              # communication test
+}
 
+while True:
     mode = usb.recv(2,timeout=60000)
-    
-    if mode==Ir0:
-        Ir(0x2C)
-    elif mode==Ir1:
-        Ir(0x2B)
-    elif mode==Is:
-        Is()
-    elif mode==Iw0:
-        Iw(0x2C)
-    elif mode == Iw0:
-        Iw(0x2B)
-    elif mode == A:
-        ADC()
-    elif mode ==AD:
-        ADC_diag()
-    else:
-        pass
+    commands[mode]()
