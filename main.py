@@ -1,12 +1,13 @@
 # main.py -- put your code here!
 #Import relevant modules
 import usocket as socket
+import network
 from pyb import USB_VCP
 from pyb import I2C
 from pyb import ADC
 from array import array
 from pyb import LED
-import time
+import utime
 from machine import Pin
 
 # OBJECT DEFINITIONS
@@ -21,6 +22,9 @@ Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
 tp = pyb.Timer(1,freq=1000000)          # timer for polling
 ti = pyb.Timer(2,freq=2000000)          # timer for interrupts
 const=0
+data = array('H',[0]*8)
+tim = bytearray(4)
+t0 = 0
 
 # SET UP WIRELESS ACCESS POINT
 wl_ap = network.WLAN(1)                 # init wlan object
@@ -34,6 +38,12 @@ s.bind(('',8080))                       # network bound to port 8080
 s.listen(1)                             # listen on this port, 1 connection tolerated
 conn, addr = s.accept()                 # accept any connection
 
+# SETUP SUCCESS
+for x in range(50):
+    led.toggle()
+    utime.sleep_ms(20)
+    led.toggle()
+
 """def zsupp(buff):
     if buff > 800:
         return True
@@ -44,14 +54,14 @@ conn, addr = s.accept()                 # accept any connection
 def Ir(address):
     if i2c.is_ready(address):
         recv = i2c.recv(1,addr=address)
-        usb.write(recv)
+        conn.send(recv)
     else:
         pass
     return None
 
 def Iw(address):
     if i2c.is_ready(address):
-        value = int.from_bytes(usb.recv(1,timeout=60000),'little')
+        value = int.from_bytes(conn.recv(1),'little')
         b = bytearray([0x00,value])
         i2c.send(b,addr=address)
     else:
@@ -64,11 +74,11 @@ def Is():
         scan[0] = i2c.scan()[0]
     else:
         pass
-    usb.write(scan)
+    conn.send(scan)
     return None
 
 def ADCp():
-    n_reads = int.from_bytes(usb.recv(4,timeout=1000),'little')
+    n_reads = int.from_bytes(conn.recv(4),'little')
     buf = array("H",[0]*2048)
     for term in range(n_reads):
         adc.read_timed(buf,tp)
@@ -76,9 +86,7 @@ def ADCp():
     return None
 
 def ADCi():
-    mnum = int.from_bytes(usb.recv(4,timeout=1000),'little')
-    data = array('H',[0]*8)
-    tim = bytearray(4)
+    mnum = int.from_bytes(conn.recv(4),'little')
     t0 = int(utime.ticks_us())
     pin_i.irq(handler=callback,trigger=Pin.IRQ_RISING)
     while const < mnum:
@@ -88,13 +96,14 @@ def ADCi():
 
 def test():
     buf = bytes('Hello!','utf-8')
-    usb.write(buf)
+    conn.send(buf)
+    conn.send(buf)
     return None
 
 # INTERRUPT CALLBACK FUNCTION
 def callback(line):
     global const
-    adc.read_timed(data,t)
+    adc.read_timed(data,ti)
     tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')
     conn.send(data)
     conn.send(tim)
@@ -114,5 +123,5 @@ commands = {
 
 # MAIN PROGRAM
 while True:
-    mode = usb.recv(2,timeout=60000)
+    mode = conn.recv(2)
     commands[mode]()
