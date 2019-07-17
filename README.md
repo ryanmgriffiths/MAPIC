@@ -27,4 +27,5 @@ Which installs the following package versions:
 * Connect to the Wi-Fi access point "PYBD".
 * Launch the APIC.exe file to bring up the GUI.
 
+## Extending the Program
 
