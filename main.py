@@ -113,10 +113,10 @@ def callback(line):
 # COMMAND CODES
 commands = {
     bytes(bytearray([0,0])) : lambda : Ir(0x2C), # Read gain pot
-    bytes(bytearray([0,1])) : lambda : Ir(0x2B), # Read width pot
+    bytes(bytearray([0,1])) : lambda : Ir(0x2D), # Read width pot
     bytes(bytearray([0,2])) : Is,                # Scan I2C
     bytes(bytearray([1,0])) : lambda : Iw(0x2C), # Write gain pot
-    bytes(bytearray([1,1])) : lambda : Iw(0x2B), # Write width pot
+    bytes(bytearray([1,1])) : lambda : Iw(0x2D), # Write width pot
     bytes(bytearray([2,0])) : ADCp,              # ADC polling
     bytes(bytearray([2,1])) : ADCi,              # ADC interrupts
     bytes(bytearray([3,3])) : test,              # communication test
