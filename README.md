@@ -4,11 +4,14 @@
 
 A program for interface with the pyboard inside the APIC box. Allowing datalogging from the onboard ADCs as well as remote control of the digital potentiometers on the pulse stretcher circuit.
 
-### Requirements
+### Setup
 
-* Python 3 and Anaconda package installed on datalogging device.
-* Micropyton v1.11
-* Pyboard PYBD-SF3-W4F2
+First install [python version 3.7.4](https://www.python.org/downloads/release/python-374/)
+In order to install dependencies, open command prompt inside the folder containging requirements.txt and sparse the command
+```console
+$ pip install -r requirements.txt
+```
+
 
 ### Features
 
