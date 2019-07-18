@@ -2,9 +2,10 @@ import serial
 import socket
 import datetime
 import numpy
+import time
 
 class APIC:
-    def __init__(self, address,tout,ipv4):
+    def __init__(self,address,tout,ipv4):
         self.tout = tout # Timeout
         self.address = address #COM port/or dev/tty
         self.ipv4 = ipv4
@@ -12,10 +13,15 @@ class APIC:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(5.0)
         self.sock.connect(ipv4)
-
+    
+    def scanI2C(self):
+        sercom = bytearray([0,2])
+        self.sock.send(sercom)
+        time.sleep(0.5)
+        print(list(self.sock.recv(2)))
 
     def readI2C(self,pot):
-        if pot != 0 and 1:
+        if pot != 0 and pot != 1:
             raise ValueError('Function only takes addresses 0, 1 for gain, width pots.')
         sercom = bytearray([0,pot])
         self.sock.send(sercom)
@@ -23,7 +29,7 @@ class APIC:
         print(int.from_bytes(reply,'little'))
 
     def writeI2C(self,pot):
-        if pot != 0 and 1:
+        if pot != 0 and pot != 1:
             raise ValueError('Function only takes addresses 0, 1 for gain, width pots.')
         sercom = bytearray([1,pot])
         value = int(input('value\n>'))
@@ -62,13 +68,3 @@ class APIC:
         d = d.total_seconds()
         print(d)
 
-'''
-    def scanI2C(self):
-        sercom = bytearray([0,2])
-        self.sock.send(sercom)
-        time.sleep(0.5)
-        if self.ser.in_waiting()>0:
-            print(self.conn.recvline().decode()[:-2])
-        else:
-            print('No I2C devices found.')
-'''

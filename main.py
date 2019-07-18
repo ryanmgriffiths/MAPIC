@@ -70,11 +70,13 @@ def Iw(address):
     return None
 
 def Is():
-    scan = bytearray(1)
-    if i2c.scan() != []:
-        scan[0] = i2c.scan()[0]
-    else:
+    scan = bytearray(2)
+    i2clist = i2c.scan()
+    if i2clist == []:
         pass
+    else:
+        for idx,chip in enumerate(i2clist):
+            scan[idx] = chip
     conn.send(scan)
     return None
 
