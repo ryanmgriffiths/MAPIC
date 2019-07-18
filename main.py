@@ -9,6 +9,7 @@ from array import array
 from pyb import LED
 import utime
 from machine import Pin
+import pyb
 
 # OBJECT DEFINITIONS
 led = LED(1)
@@ -17,11 +18,14 @@ usb.setinterrupt(-1)
 i2c = I2C(1, I2C.MASTER,baudrate=400000)
 adc = ADC(Pin('X12'))
 pin_i =  Pin('X1', Pin.IN)
+pin_mode = Pin('X8', Pin.OUT)
+pin_mode.value(1)
+clearpin = Pin('X7',Pin.OUT)
 Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
 Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
 tp = pyb.Timer(1,freq=1000000)          # timer for polling
 ti = pyb.Timer(2,freq=2000000)          # timer for interrupts
-const=0
+
 data = array('H',[0]*8)
 tim = bytearray(4)
 t0 = 0
@@ -40,16 +44,10 @@ s.listen(1)                             # listen on this port, 1 connection tole
 conn, addr = s.accept()                 # accept any connection
 
 # SETUP SUCCESS
-for x in range(50):
+for x in range(10):
     led.toggle()
-    utime.sleep_ms(20)
+    utime.sleep_ms(100)
     led.toggle()
-
-"""def zsupp(buff):
-    if buff > 800:
-        return True
-    else:
-        return False"""
 
 # OPERATION FUNCTIONS
 def Ir(address):
@@ -89,14 +87,16 @@ def ADCp():
     return None
 
 def ADCi():
-    mnum = int.from_bytes(conn.recv(4),'little')
-    t0 = int(utime.ticks_us())
-    pin_i.irq(handler=callback,trigger=Pin.IRQ_RISING)
-    while const < mnum:
-        pass
+    pyb.enable_irq(state=True)
     const = 0
-    return None
-
+    mnum = int.from_bytes(conn.recv(8),'little')
+    t0 = int(utime.ticks_us())
+    pin_i.irq(handler=callback,trigger=Pin.IRQ_RISING,hard=False)
+    while const < mnum:
+        
+        pass
+    pyb.disable_irq()
+    
 def test():
     buf = bytes('Hello!','utf-8')
     conn.send(buf)
@@ -105,11 +105,13 @@ def test():
 
 # INTERRUPT CALLBACK FUNCTION
 def callback(line):
-    global const
-    adc.read_timed(data,ti)
-    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')
+    adc.read_timed(data,t)
+#    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')
+#    conn.send(tim)
     conn.send(data)
-    conn.send(tim)
+    clearpin.value(1)
+    clearpin.value(0)
+    global const
     const = const+1
 
 # COMMAND CODES

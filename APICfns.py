@@ -11,7 +11,7 @@ class APIC:
         self.ipv4 = ipv4
         #self.ser = serial.Serial(address,115200,timeout=tout)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(5.0)
+        self.sock.settimeout(tout)
         self.sock.connect(ipv4)
     
     def scanI2C(self):
@@ -45,26 +45,19 @@ class APIC:
     def ADC_trig(self,datpts):
         sercom = bytearray([2,1])
         self.sock.send(sercom)
+        readm = bytearray(16)
+        logtimem = bytearray(4)
+        datpts = int(input('Init?'))
         data = numpy.zeros((datpts,8),dtype='uint16')
         times = numpy.zeros(datpts,dtype='uint32')  
         datptsb = datpts.to_bytes(8,'little',signed=False)
-        readm = bytearray(16)
-        logtimem = bytearray(4)
-        d0 = datetime.datetime.now()
-        self.sock.send(datptsb)
-        
+        self.s.send(datptsb)
         for x in range(datpts):
-            self.sock.recv_into(readm,16)
-            self.sock.recv_into(logtimem,4)
+            self.s.recv_into(readm,16)
+            self.s.recv_into(logtimem,4)
             data[x,:] = numpy.frombuffer(readm,dtype='uint16')
-            times[x] = int.from_bytes(logtimem,'little')
-
-        d1 = datetime.datetime.now()
-
+            times[x] = int.from_bytes(logtimem,'little')     
+           
         numpy.savetxt('datairq.txt',data)
         numpy.savetxt('timeirq.txt',times)
-
-        d = d1-d0
-        d = d.total_seconds()
-        print(d)
 
