@@ -38,7 +38,7 @@ class APIC:
         sercom = bytearray([0,pot])                                     
         self.sock.send(sercom)                  # Send byte command.
         self.reply = self.sock.recv(1)          # 1 byte number from the digital pot represents current position.
-        self.reply = int.from_bytes(reply,'little')     # Convert back to an integer.
+        self.reply = int.from_bytes(self.reply,'little')     # Convert back to an integer.
         print(self.reply)
         return self.reply
 
@@ -77,14 +77,15 @@ class APIC:
         
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
         for x in range(datpts):
-            self.sock.recv_into(readm,16)
-            data[x,:] = numpy.frombuffer(readm,dtype='uint16')
-            #print(x)
-            #self.sock.recv_into(logtimem,4)
-            #times[x] = int.from_bytes(logtimem,'little')     
-        
+            try:
+                self.sock.recv_into(readm,16)
+                data[x,:] = numpy.frombuffer(readm,dtype='uint16')
+                print(x)
+                #self.sock.recv_into(logtimem,4)
+                #times[x] = int.from_bytes(logtimem,'little')     
+            except:
+                break
         # Save numpy arrays and return the arrays.
         numpy.savetxt('datairq.txt',data)
         #numpy.savetxt('timeirq.txt',times)
-        print(data)
         return data#,times
