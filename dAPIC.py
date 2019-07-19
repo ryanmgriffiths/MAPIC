@@ -22,7 +22,7 @@ while True:
         apic.test()
     elif cmd == 'ADi':
         datapoints = int(input('32Bit range:\n>'))
-        apic.ADC_trig(datapoints)
+        apic.ADC_i(datapoints)
     elif cmd == 'Ic':
         pass
     else:
