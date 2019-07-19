@@ -9,7 +9,7 @@ from array import array
 from pyb import LED
 import utime
 from machine import Pin
-import pyb
+import machine
 
 # OBJECT DEFINITIONS
 led = LED(1)
@@ -25,10 +25,11 @@ Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
 Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
 tp = pyb.Timer(1,freq=1000000)          # timer for polling
 ti = pyb.Timer(2,freq=2000000)          # timer for interrupts
-
 data = array('H',[0]*8)
 tim = bytearray(4)
 t0 = 0
+const=0
+#I = machine.disable_irq()
 
 
 # SET UP WIRELESS ACCESS POINT
@@ -42,6 +43,7 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind(('',8080))                       # network bound to port 8080
 s.listen(1)                             # listen on this port, 1 connection tolerated
 conn, addr = s.accept()                 # accept any connection
+print('Connected!')
 
 # SETUP SUCCESS
 for x in range(10):
@@ -87,16 +89,15 @@ def ADCp():
     return None
 
 def ADCi():
-    pyb.enable_irq(state=True)
+#    machine.enable_irq(I)
     const = 0
     mnum = int.from_bytes(conn.recv(8),'little')
-    t0 = int(utime.ticks_us())
+    #t0 = int(utime.ticks_us())
     pin_i.irq(handler=callback,trigger=Pin.IRQ_RISING,hard=False)
     while const < mnum:
-        
         pass
-    pyb.disable_irq()
-    
+#    I = machine.disable_irq()
+
 def test():
     buf = bytes('Hello!','utf-8')
     conn.send(buf)
@@ -105,7 +106,7 @@ def test():
 
 # INTERRUPT CALLBACK FUNCTION
 def callback(line):
-    adc.read_timed(data,t)
+    adc.read_timed(data,ti)
 #    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')
 #    conn.send(tim)
     conn.send(data)
