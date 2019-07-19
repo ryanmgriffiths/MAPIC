@@ -28,4 +28,3 @@ Which installs the following package versions:
 * Launch the APIC.exe file to bring up the GUI.
 
 ## Extending the Program
-
