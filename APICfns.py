@@ -65,21 +65,21 @@ class APIC:
         sercom = bytearray([2,1])
         self.sock.send(sercom)                                          # Send byte command.
         readm = bytearray(16)                                           # Bytearray for receiving ADC data (with no mem allocation).
-        logtimem = bytearray(4)                                         # Bytearray to receive times.
+        #logtimem = bytearray(4)                                         # Bytearray to receive times.
         datpts = int(input('Init?'))
         data = numpy.zeros((datpts,8),dtype='uint16')                   # ADC values numpy array.
-        times = numpy.zeros(datpts,dtype='uint32')                      # End of peak timestamps array.
+        #times = numpy.zeros(datpts,dtype='uint32')                      # End of peak timestamps array.
         datptsb = datpts.to_bytes(8,'little',signed=False)
         self.s.send(datptsb)
         
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
         for x in range(datpts):
             self.s.recv_into(readm,16)
-            self.s.recv_into(logtimem,4)
+            #self.s.recv_into(logtimem,4)
             data[x,:] = numpy.frombuffer(readm,dtype='uint16')
-            times[x] = int.from_bytes(logtimem,'little')     
+            #times[x] = int.from_bytes(logtimem,'little')     
         
         # Save numpy arrays and return the arrays.
         numpy.savetxt('datairq.txt',data)
-        numpy.savetxt('timeirq.txt',times)
-        return data,times
+        #numpy.savetxt('timeirq.txt',times)
+        return data#,times
