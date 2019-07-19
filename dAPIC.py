@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import datetime
 import APICfns as F
 
-apic = F.APIC('COM7',0.5,('192.168.4.1',8080))
+apic = F.APIC('COM7',10,('192.168.4.1',8080))
 
 while True:
     cmd = input('>')
@@ -21,8 +21,12 @@ while True:
     elif cmd == 'T':
         apic.test()
     elif cmd == 'ADi':
+        a = datetime.datetime.now()
         datapoints = int(input('32Bit range:\n>'))
         apic.ADCi(datapoints)
+        b = (a - datetime.datetime.now())
+        print(b)
+
     elif cmd == 'Ic':
         pass
     else:
