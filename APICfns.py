@@ -58,7 +58,7 @@ class APIC:
         self.sock.send(sercom)              # Send byte command.
         print(self.sock.recv(6))            # Receive a predicatble 6 chars over socket.
 
-    def ADC_i(self,datpts):
+    def ADCi(self,datpts):
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples to procure, returns arrays of 1) 8 samples
         of peaks in ADC counts and times at the end of each peak in microseconds from the start of the experiment.'''
         
