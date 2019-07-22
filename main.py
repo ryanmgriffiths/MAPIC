@@ -28,7 +28,7 @@ Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
 Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
 adc = ADC(Pin('X12'))                   # define ADC pin
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
-pin_mode.value(1)                       # enable manual pulse clearing (i.e. pin -> high)
+pin_mode.value(0)                       # enable manual pulse clearing (i.e. pin -> high)
 clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
 polarpin = Pin('X6', Pin.OUT)           # define pin that chooses polarity   
 polarpin.value(1)                       # set to 1 to achieve positive polarity
@@ -101,8 +101,8 @@ def ADCp():
 
 def ADCi():
     clearpin.value(1)
-    utime.sleep_us(10)
     clearpin.value(0)
+
     global const
     const = 0
     extint.enable()
@@ -124,10 +124,9 @@ def callback(line):
     global const                    # reference the global const counter
 #    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')     # timestamp the pulse
 #    conn.send(tim)                 # send timestamp over socket
-    conn.send(data)                 # send adc sample over socket
     print('Interrupt!')
+    conn.send(data)                 # send adc sample over socket
     clearpin.value(1)               # perform pulse clearing
-    utime.sleep_us(10)
     clearpin.value(0)
     const = const+1                 # pulse counter                                                                
 

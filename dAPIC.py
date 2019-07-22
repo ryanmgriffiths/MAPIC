@@ -26,8 +26,5 @@ while True:
         apic.ADCi(datapoints)
         b = (a - datetime.datetime.now())
         print(b)
-
-    elif cmd == 'Ic':
-        pass
     else:
         print('Invalid command.')
