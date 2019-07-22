@@ -15,17 +15,24 @@ from pyb import LED
 # OBJECT DEFINITIONS
 led = LED(1)                # define diagnostic LED
 usb = USB_VCP()             # init VCP object
-usb.setinterrupt(-1)        # enables sending raw bytes over serial without interpreting interrupt key ctrl-c and aborting
+# usb.setinterrupt(-1)        # enables sending raw bytes over serial without interpreting interrupt key ctrl-c and aborting
 i2c = I2C(1, I2C.MASTER,
     baudrate=400000)        # define I2C channel, master/slave protocol and baudrate needed
+tp = pyb.Timer(1,freq=1000000)          # init timer for polling
+ti = pyb.Timer(2,freq=2000000)          # init timer for interrupts
+
+
+# PIN SETUP AND INITIAL POLARITY/INTERRUPT MODE
+#####
+Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
+Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
 adc = ADC(Pin('X12'))                   # define ADC pin
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
 pin_mode.value(1)                       # enable manual pulse clearing (i.e. pin -> high)
 clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
-Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
-Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
-tp = pyb.Timer(1,freq=1000000)          # init timer for polling
-ti = pyb.Timer(2,freq=2000000)          # init timer for interrupts
+polarpin = Pin('X6', Pin.OUT)           # define pin that chooses polarity   
+polarpin.value(1)                       # set to 1 to achieve positive polarity
+
 
 # DATA STORAGE AND COUNTERS
 data = array('H',[0]*8)     # buffer into which ADC readings are written to avoid memory allocation
@@ -93,6 +100,9 @@ def ADCp():
     return None
 
 def ADCi():
+    clearpin.value(1)
+    utime.sleep_us(10)
+    clearpin.value(0)
     global const
     const = 0
     extint.enable()
@@ -102,10 +112,9 @@ def ADCi():
         pass
     extint.disable()
 
-### DIAGNOSTIC FUNCTION
+### DIAGNOSTIC FUNCTION - literally breaks the program so
 def test():
     buf = bytes('Hello!','utf-8')
-    conn.send(buf)
     conn.send(buf)
     return None
 
@@ -116,7 +125,9 @@ def callback(line):
 #    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')     # timestamp the pulse
 #    conn.send(tim)                 # send timestamp over socket
     conn.send(data)                 # send adc sample over socket
+    print('Interrupt!')
     clearpin.value(1)               # perform pulse clearing
+    utime.sleep_us(10)
     clearpin.value(0)
     const = const+1                 # pulse counter                                                                
 
@@ -134,8 +145,8 @@ commands = {
     bytes(bytearray([3,3])) : test,                 # communication test
 }
 
-extint = ExtInt('X1',ExtInt.IRQ_RISING,
-    pyb.Pin.PULL_NONE,callback)     # init hardware irq on pin X1, rising edge and executes function callback
+extint = ExtInt('X2',ExtInt.IRQ_RISING,
+    pyb.Pin.PULL_NONE,callback)     # init hardware irq on rising edge and executes function callback
 extint.disable()                    # immediately disable interrupt to ensure it doesnt fill socket buffer
 
 # MAIN PROGRAM LOOP
