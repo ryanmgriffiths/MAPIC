@@ -26,8 +26,7 @@ class APIC:
         self.sock.send(sercom)                  # Send byte code to init scan protocol on board
         time.sleep(0.5)
         addresses = list(self.sock.recv(2))     # Recieve a list of 2 I2C addresses in list of 8 bit nums
-        print(addresses)
-        return addresses
+        self.I2Caddrs = addresses
 
     def readI2C(self,pot):
         '''Read one of the two I2C digital potentiometers. Takes argument pot which can be integer 0 or 1 indicating which
