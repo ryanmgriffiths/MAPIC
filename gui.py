@@ -1,17 +1,26 @@
 from tkinter import *
 import tkinter.ttk as ttk
 import numpy
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-### SETUP
+
+### SETUP ###
 root = Tk()
-#root.geometry('1000x500')
 root.title('APIC')
 #root.wm_iconbitmap('dAPIC.bmp')
 
-### I2C CONTROL
+### DEFINE FRAMES ###
 I2Cframe = LabelFrame(root,text='I2C Digital Potentiometer Control')
 I2Cframe.grid(row=1,column=1,columnspan=6,rowspan=4)
 
+ADCframe = LabelFrame(root,text='Measurement Tools')
+ADCframe.grid(row=4,column=1,columnspan=5,rowspan=3,sticky=W)
+
+diagnostic = LabelFrame(root,text='Diagnostic Message:')
+diagnostic.grid(row=5,column=6)
+
+### I2C TOOLS FRAME ###
 def read():
     Ireadlabel.config(text='Gain: %i , Width: %i' % (128,128))
 
@@ -26,10 +35,8 @@ Iscan = Button(I2Cframe,text='I2C Addresses',command=scan).grid(row=3,column=1)
 Iscanlabel = Label(I2Cframe,text='---',bd=10)
 Iscanlabel.grid(row=4,column=1)
 
-#Dividing up IR and IW
 divide = Label(I2Cframe,text='                ').grid(row=1,column=2,rowspan=6,columnspan=2)
 
-# I2C WRITING WITH SLIDERS
 var0 = IntVar()
 
 def write0():
@@ -56,14 +63,11 @@ W1S.grid(row=3,column=5,rowspan=2)
 W1L = Label(I2Cframe,text='---')
 W1L.grid(row=3,column=6,rowspan=2)
 
-### ADC Control
+### ADC Control Frame ###
 numadc=StringVar()
 def stringcontrol():
     vals = numadc.get() 
     ADCout.config(text=vals)
-
-ADCframe = LabelFrame(root,text='Measurement Tools')
-ADCframe.grid(row=5,column=1,columnspan=5,rowspan=5,sticky=W)
 
 ADCil = Label(ADCframe, text='Interrupt Samples:')
 ADCil.grid(row=1,column=1)
@@ -87,14 +91,24 @@ npolarity.grid(row=3,column=5,sticky=W)
 divide = Label(ADCframe,text='                   ').grid(row=1,
     column=4,rowspan=6)
 
-diagnostic = LabelFrame(root,text='Diagnostic Frame:')
-diagnostic.grid(row=5,column=6,columnspan=6)
+
+### Diagnostic Frame ###
 errorbox = Message(diagnostic,text='Error 404 nothing to display here except an error that is long!',
     bg='white',relief=RIDGE,width=220)
 errorbox.grid(row=1,column=1)
 
-menubar = Menu(root)
+### Matplotlib Histogram Frame ###
 
+histogram = plt.Figure(dpi=100)
+ax1 = histogram.add_subplot(111)
+ax1.plot(numpy.arange(10),numpy.arange(10))
+
+bar1 = FigureCanvasTkAgg(histogram, root)
+bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
+plt.close()
+
+### Top menu bar ###
+menubar = Menu(root)
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
 filemenu.add_command(label="Connect")
@@ -108,6 +122,5 @@ helpmenu = Menu(menubar, tearoff=0)
 helpmenu.add_command(label="About")
 menubar.add_cascade(label="Help", menu=helpmenu)
 
-# display the menu
-root.config(menu=menubar)
-root.mainloop()
+root.config(menu=menubar)       # display menubar
+root.mainloop()                 # run main gui program
