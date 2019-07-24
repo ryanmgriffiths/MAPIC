@@ -3,6 +3,7 @@ import socket       # Low level networking module
 import datetime     # for measuring rates
 import numpy
 import time
+import os
 
 class APIC:
     '''Class representing the APIC. Methods invoke measurement and information 
@@ -17,7 +18,24 @@ class APIC:
         self.sock.settimeout(tout)          # Socket timeout.
         self.sock.connect(ipv4)             # Init connection to the socket.
 
+        # SET FILE NUMBERS FOR DATA SAVING
+        self.raw_dat_count = 0              #  counter for the number of raw data files
+        self.hist_count = 0                 #  counter for the number of histogram graphs
+        
+        # Find the number of files currently in the data directory.
+        for datafile in os.listdir('\histdata'):
+            if datafile.startswith('histogram'):
+                self.hist_count+=1
+            elif datafile.startswith('datairq'):
+                self.raw_dat_count+=1
+
         #self.ser = serial.Serial(address,115200,timeout=tout)          # Connect to the serial port & init serial obj.
+    
+    def createfileno(self,fncount):
+        '''A function that '''
+        fnstring = '0000'
+        fnstring[-len(str(fncount)):] = str(fncount)
+        return fnstring
 
     def scanI2C(self):
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.'''
@@ -28,29 +46,19 @@ class APIC:
         addresses = list(self.sock.recv(2))     # Recieve a list of 2 I2C addresses in list of 8 bit nums
         self.I2Caddrs = addresses
 
-    def readI2C(self,pot):
-        '''Read one of the two I2C digital potentiometers. Takes argument pot which can be integer 0 or 1 indicating which
-        pot to control. Reads value from socket and converts to an integer and returns it.'''
-        
-        if pot != 0 and pot != 1:               # Ensure only these two values are able to be passed.
-            raise ValueError('Function only takes addresses 0, 1 for gain, width pots.')
-        sercom = bytearray([0,pot])                                     
-        self.sock.send(sercom)                  # Send byte command.
-        self.reply = self.sock.recv(1)          # 1 byte number from the digital pot represents current position.
-        self.reply = int.from_bytes(self.reply,'little')     # Convert back to an integer.
-        print(self.reply)
-        return self.reply
+    def readI2C(self):
+        '''Read the two I2C digital potentiometers. Creates apic items posGAIN and posWIDTH which store the potentiometer positions.'''
+        sercom = bytearray([0,0])                                     
+        self.sock.send(sercom)                                              # Send byte command.
+        self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive gain position
+        self.posWIDTH = int.from_bytes(self.sock.recv(1),'little')          # receive width position
 
-    def writeI2C(self,pot):
+    def writeI2C(self,pos,pot):
         '''Writes 8 bit values to one the two digital potentiometers. One argument pot dictates which potentiometer to
         write to, the conversion of the byte command is done on the board and an actual hex address is assigned there.'''
-        
-        if pot != 0 and pot != 1:               # Ensure only these two values are able to be passed.
-            raise ValueError('Function only takes addresses 0, 1 for gain, width pots.')
-        sercom = bytearray([1,pot])                                   
-        value = int(input('value\n>'))          # Take a 1 byte number input for the position to write.
+        sercom = bytearray([1,pot])
         self.sock.send(sercom)                  # Send byte command.
-        self.sock.send(bytes([value]))          # Convert desired pot value to bytes and send.
+        self.sock.send(bytes([pos]))          # Convert desired pot value to bytes and send.
 
     def test(self):
         '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
@@ -63,9 +71,9 @@ class APIC:
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples to procure, 
         returns arrays of 1) 8 samples of peaks in ADC counts and times at the end of each peak in microseconds 
         from the start of the experiment.'''
-        
         sercom = bytearray([2,1])
         self.sock.send(sercom)              # Send byte command
+        
         readm = bytearray(16)               # Bytearray for receiving ADC data (with no mem allocation)
         #logtimem = bytearray(4)            # Bytearray to receive times
 
@@ -76,15 +84,14 @@ class APIC:
         
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
         for x in range(datpts):
-            try:
-                self.sock.recv_into(readm,16)
-                data[x,:] = numpy.frombuffer(readm,dtype='uint16')
-                print(x)
-                #self.sock.recv_into(logtimem,4)
-                #times[x] = int.from_bytes(logtimem,'little')     
-            except:
-                break
-        # Save numpy arrays and return the arrays.
-        numpy.savetxt('datairq.txt',data)
+            self.sock.recv_into(readm,16)
+            data[x,:] = numpy.frombuffer(readm,dtype='uint16')
+            print(x)
+            #self.sock.recv_into(logtimem,4)
+            #times[x] = int.from_bytes(logtimem,'little')     
+
+        # Save and return the arrays.
+        numpy.savetxt('datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
+        self.raw_dat_count += 1
         #numpy.savetxt('timeirq.txt',times)
-        return data#,times
+        return data             #,times

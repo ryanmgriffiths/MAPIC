@@ -3,7 +3,13 @@ import tkinter.ttk as ttk
 import numpy
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import serial
+import time
+from array import array
+import datetime
+import APICfns as F
 
+apic = F.APIC('COM3',10,('192.168.4.1',8080))
 
 ### SETUP ###
 root = Tk()
@@ -22,10 +28,12 @@ diagnostic.grid(row=5,column=6)
 
 ### I2C TOOLS FRAME ###
 def read():
-    Ireadlabel.config(text='Gain: %i , Width: %i' % (128,128))
+    apic.readI2C()
+    Ireadlabel.config(text='Gain: %i , Width: %i' % (apic.posGAIN,apic.posWIDTH))
 
 def scan():
-    Iscanlabel.config(text=str([44,45]))
+    apic.scan()
+    Iscanlabel.config(text=str(apic.I2Caddrs))
 
 Iread = Button(I2Cframe,text='Potentiometer Values',command=read).grid(row=1,column=1)
 Ireadlabel = Label(I2Cframe,text='---')
@@ -40,28 +48,25 @@ divide = Label(I2Cframe,text='                ').grid(row=1,column=2,rowspan=6,c
 var0 = IntVar()
 
 def write0():
-    text = str(var0.get())
-    W0L.config(text=text)
+    gain = var0.get()
+    apic.write(gain,0)
+
 
 W0B = Button(I2Cframe,text='Set Gain Value',command=write0).grid(row=1,column=4,rowspan=2)
 W0S = Scale(I2Cframe,orient=HORIZONTAL,tickinterval=32,resolution=1,
     from_=1,to=256,length=300,variable=var0)
 W0S.grid(row=1,column=5,rowspan=2)
-W0L = Label(I2Cframe,text='---')
-W0L.grid(row=1,column=6,rowspan=2)
 
 var1 = IntVar()
 
 def write1():
-    text = str(var1.get())
-    W1L.config(text=text)
+    width = var1.get()
+    apic.write(width,1)
 
 W1B = Button(I2Cframe,text='Set Width Value',command=write1).grid(row=3,column=4,rowspan=2)
 W1S = Scale(I2Cframe,orient=HORIZONTAL,tickinterval=32,resolution=1,
     from_=1,to=256,length=300,variable=var1)
 W1S.grid(row=3,column=5,rowspan=2)
-W1L = Label(I2Cframe,text='---')
-W1L.grid(row=3,column=6,rowspan=2)
 
 ### ADC Control Frame ###
 numadc=StringVar()
