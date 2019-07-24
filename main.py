@@ -56,10 +56,12 @@ for x in range(10):
     led.toggle()
 
 # OPERATION FUNCTIONS
-def Ir(address):
+def Ir():
     if i2c.is_ready(address):
-        recv = i2c.recv(1,addr=address)
-        conn.send(recv)
+        gain = i2c.recv(1,addr=0x2D)
+        width = i2c.recv(1,addr=0x2D)
+        conn.send(gain)
+        conn.send(width)
     else:
         raise Exception
     return None
@@ -124,8 +126,7 @@ def callback(line):
 
 # COMMAND CODES: bytearrays that the main program looks for to execute functions above.
 commands = {
-    bytes(bytearray([0,0])) : lambda : Ir(0x2C),    # read gain pot
-    bytes(bytearray([0,1])) : lambda : Ir(0x2D),    # read width pot
+    bytes(bytearray([0,0])) : Ir,    # read first gain potentiometer, then width
     bytes(bytearray([0,2])) : Is,                   # scan I2C
     bytes(bytearray([1,0])) : lambda : Iw(0x2C),    # write gain pot
     bytes(bytearray([1,1])) : lambda : Iw(0x2D),    # write width pot
