@@ -43,6 +43,13 @@ t0=0                        # time at the beginning of the experiment
 const=0                     # counter for pulses read
 
 
+# DATA STORAGE AND COUNTERS
+data = array('H',[0]*4)     # buffer into which ADC readings are written to avoid memory allocation
+tim = bytearray(4)          # bytearray for microsecond, 4 byte timestamps
+t0=0                        # time at the beginning of the experiment
+const=0                     # counter for pulses read
+
+
 # SET UP WIRELESS ACCESS POINT
 wl_ap = network.WLAN(1)                 # init wlan object
 wl_ap.config(essid='PYBD')              # set AP SSID
@@ -65,10 +72,12 @@ for x in range(10):
     led.toggle()
 
 # OPERATION FUNCTIONS
-def Ir(address):
-    if i2c.is_ready(address):
-        recv = i2c.recv(1,addr=address)
-        conn.send(recv)
+def Ir():
+    if i2c.is_ready(0x2D) and i2c.is_ready(0x2C):
+        gain = i2c.recv(1,addr=0x2D)
+        width = i2c.recv(1,addr=0x2C)
+        conn.send(gain)
+        conn.send(width)
     else:
         raise Exception
     return None
@@ -105,7 +114,6 @@ def ADCi():
     a=utime.ticks_ms()
     clearpin.value(1)
     clearpin.value(0)
-
     global const
     const = 0
     extint.enable()
@@ -116,15 +124,11 @@ def ADCi():
     extint.disable()
     b = utime.ticks_ms()-a
     print(b)
-
-### DIAGNOSTIC FUNCTION - literally breaks the program so
-def test():
-    buf = bytes('Hello!','utf-8')
-    conn.send(buf)
     return None
 
-def cb(line):
-    micropython.schedule(callback,'a')
+
+def polarity(polarity=0):
+    polarpin.value(polarity)
 
 # INTERRUPT CALLBACK FUNCTION
 def callback(argu):
@@ -137,22 +141,23 @@ def callback(argu):
     clearpin.value(0)
     const = const+1                 # pulse counter
 
-
+def cb(line):
+    micropython.schedule(callback,'a')
 
 # COMMAND CODES: bytearrays that the main program looks for to execute functions above.
 commands = {
-    bytes(bytearray([0,0])) : lambda : Ir(0x2C),    # read gain pot
-    bytes(bytearray([0,1])) : lambda : Ir(0x2D),    # read width pot
+    bytes(bytearray([0,0])) : Ir,    # read first gain potentiometer, then width
     bytes(bytearray([0,2])) : Is,                   # scan I2C
-    bytes(bytearray([1,0])) : lambda : Iw(0x2C),    # write gain pot
-    bytes(bytearray([1,1])) : lambda : Iw(0x2D),    # write width pot
+    bytes(bytearray([1,0])) : lambda : Iw(0x2D),    # write gain pot
+    bytes(bytearray([1,1])) : lambda : Iw(0x2C),    # write width pot
     bytes(bytearray([2,0])) : ADCp,                 # ADC polling
     bytes(bytearray([2,1])) : ADCi,                 # ADC interrupts
-    bytes(bytearray([3,3])) : test,                 # communication test
+    bytes(bytearray([4,0])) : lambda:polarity(polarity=0),
+    bytes(bytearray([4,1])) : lambda:polarity(polarity=1)
 }
 
 extint = ExtInt('X2',ExtInt.IRQ_RISING,
-    pyb.Pin.PULL_NONE,cb)     # init hardware irq on rising edge and executes function callback
+    pyb.Pin.PULL_NONE,cb)     # init hardware irq on pin X1, rising edge and executes function callback
 extint.disable()                    # immediately disable interrupt to ensure it doesnt fill socket buffer
 
 # MAIN PROGRAM LOOP
