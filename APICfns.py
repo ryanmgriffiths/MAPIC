@@ -31,10 +31,14 @@ class APIC:
 
         #self.ser = serial.Serial(address,115200,timeout=tout)          # Connect to the serial port & init serial obj.
     
-    def createfileno(self,fncount):
-        '''A function that '''
+    def createfileno(self,fncount,DATA):
+        '''A function that is used to create the file number endings.'''
         fnstring = '0000'
         fnstring[-len(str(fncount)):] = str(fncount)
+        if data==True:
+            self.raw_dat_count+=1
+        else:
+            self.hist_count+=1
         return fnstring
 
     def scanI2C(self):

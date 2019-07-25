@@ -70,9 +70,22 @@ W1S.grid(row=3,column=5,rowspan=2)
 
 ### ADC Control Frame ###
 numadc=StringVar()
-def stringcontrol():
-    vals = numadc.get() 
-    ADCout.config(text=vals)
+
+def ADCi():
+    datapts = numadc.get() 
+    adcidata = apic.ADCi(datapts)
+    histogram = plt.Figure(dpi=100)
+    ax1 = histogram.add_subplot(111)
+    hdat = numpy.average(adcidata,axis=1)
+    ax1.hist(hdat,200,(0,3100),color='b',edgecolor='black')
+    plt.title('Energy Spectrum')
+    plt.xlabel('ADC Count')
+    plt.ylabel('Counts')
+    plt.savefig('histogram'+apic.createfileno(apic.histogram_count)+'.png')
+    bar1 = FigureCanvasTkAgg(histogram, root)
+    bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
+    plt.close()
+
 
 ADCil = Label(ADCframe, text='Interrupt Samples:')
 ADCil.grid(row=1,column=1)
@@ -80,7 +93,7 @@ ADCil.grid(row=1,column=1)
 ADCie = Entry(ADCframe,textvariable=numadc)
 ADCie.grid(row=1,column=2)
 
-ADCout = Button(ADCframe, command=stringcontrol)
+ADCout = Button(ADCframe, command=ADCi,text='Start')
 ADCout.grid(row=1,column=3)
 
 def pselect():
@@ -104,19 +117,6 @@ errorbox.grid(row=1,column=1)
 
 ### Matplotlib Histogram Frame ###
 
-histogram = plt.Figure(dpi=100)
-ax1 = histogram.add_subplot(111)
-
-data = numpy.loadtxt('datairq100k.txt')
-hdat = numpy.average(data,axis=1)
-ax1.hist(hdat,200,(0,3100),color='b',edgecolor='black')
-plt.title('Fe-55 Energy Spectrum')
-plt.xlabel('ADC Count')
-plt.ylabel('Counts')
-plt.savefig('nosie.png')
-bar1 = FigureCanvasTkAgg(histogram, root)
-bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
-plt.close()
 
 ### Top menu bar ###
 menubar = Menu(root)
