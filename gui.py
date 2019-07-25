@@ -81,7 +81,7 @@ def ADCi():
     plt.title('Energy Spectrum')
     plt.xlabel('ADC Count')
     plt.ylabel('Counts')
-    plt.savefig('histogram'+apic.createfileno(apic.histogram_count)+'.png')
+    plt.savefig('histogram'+apic.createfileno(apic.hist_count)+'.png')
     bar1 = FigureCanvasTkAgg(histogram, root)
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
     plt.close()
@@ -114,9 +114,6 @@ divide = Label(ADCframe,text='                   ').grid(row=1,
 errorbox = Message(diagnostic,text='Error messages.',
     bg='white',relief=RIDGE,width=220)
 errorbox.grid(row=1,column=1)
-
-### Matplotlib Histogram Frame ###
-
 
 ### Top menu bar ###
 menubar = Menu(root)
