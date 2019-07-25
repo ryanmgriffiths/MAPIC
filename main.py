@@ -10,6 +10,8 @@ from pyb import I2C
 from pyb import ADC
 from array import array
 from pyb import LED
+import micropython
+micropython.alloc_emergency_exception_buf(100)
 
 
 # OBJECT DEFINITIONS
@@ -31,11 +33,11 @@ pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
 pin_mode.value(0)                       # enable manual pulse clearing (i.e. pin -> high)
 clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
 polarpin = Pin('X6', Pin.OUT)           # define pin that chooses polarity   
-polarpin.value(1)                       # set to 1 to achieve positive polarity
+polarpin.value(0)                       # set to 1 to achieve positive polarity
 
 
 # DATA STORAGE AND COUNTERS
-data = array('H',[0]*8)     # buffer into which ADC readings are written to avoid memory allocation
+data = array('H',[0]*4)     # buffer into which ADC readings are written to avoid memory allocation
 tim = bytearray(4)          # bytearray for microsecond, 4 byte timestamps
 t0=0                        # time at the beginning of the experiment
 const=0                     # counter for pulses read
@@ -100,6 +102,7 @@ def ADCp():
     return None
 
 def ADCi():
+    a=utime.ticks_ms()
     clearpin.value(1)
     clearpin.value(0)
 
@@ -111,6 +114,8 @@ def ADCi():
     while const < mnum:
         pass
     extint.disable()
+    b = utime.ticks_ms()-a
+    print(b)
 
 ### DIAGNOSTIC FUNCTION - literally breaks the program so
 def test():
@@ -118,17 +123,19 @@ def test():
     conn.send(buf)
     return None
 
+def cb(line):
+    micropython.schedule(callback,'a')
+
 # INTERRUPT CALLBACK FUNCTION
-def callback(line):
+def callback(argu):
     adc.read_timed(data,ti)         # 4 microsecond measurement from ADC at X12,
     global const                    # reference the global const counter
 #    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')     # timestamp the pulse
 #    conn.send(tim)                 # send timestamp over socket
-    print('Interrupt!')
     conn.send(data)                 # send adc sample over socket
     clearpin.value(1)               # perform pulse clearing
     clearpin.value(0)
-    const = const+1                 # pulse counter                                                                
+    const = const+1                 # pulse counter
 
 
 
@@ -145,7 +152,7 @@ commands = {
 }
 
 extint = ExtInt('X2',ExtInt.IRQ_RISING,
-    pyb.Pin.PULL_NONE,callback)     # init hardware irq on rising edge and executes function callback
+    pyb.Pin.PULL_NONE,cb)     # init hardware irq on rising edge and executes function callback
 extint.disable()                    # immediately disable interrupt to ensure it doesnt fill socket buffer
 
 # MAIN PROGRAM LOOP
