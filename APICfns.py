@@ -17,20 +17,18 @@ class APIC:
             ,socket.SOCK_STREAM)            # Init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
         self.sock.settimeout(tout)          # Socket timeout.
         self.sock.connect(ipv4)             # Init connection to the socket.
-
-        # SET FILE NUMBERS FOR DATA SAVING
-        self.raw_dat_count = 0              #  counter for the number of raw data files
-        self.hist_count = 0                 #  counter for the number of histogram graphs
-        
-        # Find the number of files currently in the data directory.
-        for datafile in os.listdir('histdata'):
-            if datafile.startswith('histogram'):
-                self.hist_count+=1
-            elif datafile.startswith('datairq'):
-                self.raw_dat_count+=1
-
         #self.ser = serial.Serial(address,115200,timeout=tout)          # Connect to the serial port & init serial obj.
     
+        # SET FILE NUMBERS FOR DATA SAVING
+        self.raw_dat_count = 0              #  counter for the number of raw data files
+        
+        # Find the number of relevant files currently in the data directory.
+        for datafile in os.listdir('histdata'):
+            if datafile.startswith('datairq'):
+                self.raw_dat_count+=1
+            else:
+                pass
+
     def createfileno(self,fncount,DATA=True):
         '''A function that is used to create the file number endings.'''
         fncount=str(fncount)
@@ -87,23 +85,22 @@ class APIC:
         readm = bytearray(16)               # Bytearray for receiving ADC data (with no mem allocation)
         #logtimem = bytearray(4)            # Bytearray to receive times
 
-        data = numpy.zeros((datpts,4),dtype='uint16')           # ADC values numpy array
+        self.data = numpy.zeros((datpts,4),dtype='uint16')           # ADC values numpy array
         #times = numpy.zeros(datpts,dtype='uint32')             # End of peak timestamps array
         datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
-        self.sock.send(sercom)              # Send byte command
-
+        self.sock.send(sercom)                                  # Send byte command
         self.sock.send(datptsb)                                 # send num if data points to sample
         
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
         for x in range(datpts):
             self.sock.recv_into(readm,16)
-            data[x,:] = numpy.frombuffer(readm,dtype='uint16')
+            self.data[x,:] = numpy.frombuffer(readm,dtype='uint16')
             print(x)
             #self.sock.recv_into(logtimem,4)
             #times[x] = int.from_bytes(logtimem,'little')     
 
         # Save and return the arrays.
-        numpy.savetxt('datairq'+self.createfileno(self.raw_dat_count,DATA=True)+'.txt',data)
+        numpy.savetxt('\histdata\datairq'+self.createfileno(self.raw_dat_count,DATA=True)+'.txt',self.data)
         self.raw_dat_count += 1
         #numpy.savetxt('timeirq.txt',times)
         return data             #,times
