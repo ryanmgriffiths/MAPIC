@@ -59,7 +59,7 @@ for x in range(10):
 def Ir():
     if i2c.is_ready(address):
         gain = i2c.recv(1,addr=0x2D)
-        width = i2c.recv(1,addr=0x2D)
+        width = i2c.recv(1,addr=0x2C)
         conn.send(gain)
         conn.send(width)
     else:
@@ -122,7 +122,8 @@ def callback(line):
     clearpin.value(0)
     const = const+1                 # pulse counter                                                                
 
-
+def cb(line):
+    micropython.schedule(callback,'a')
 
 # COMMAND CODES: bytearrays that the main program looks for to execute functions above.
 commands = {
