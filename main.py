@@ -11,22 +11,37 @@ from pyb import ADC
 from array import array
 from pyb import LED
 import micropython
+micropython.alloc_emergency_exception_buf(100)
 
 
 # OBJECT DEFINITIONS
 led = LED(1)                # define diagnostic LED
 usb = USB_VCP()             # init VCP object
-usb.setinterrupt(-1)        # enables sending raw bytes over serial without interpreting interrupt key ctrl-c and aborting
+# usb.setinterrupt(-1)        # enables sending raw bytes over serial without interpreting interrupt key ctrl-c and aborting
 i2c = I2C(1, I2C.MASTER,
     baudrate=400000)        # define I2C channel, master/slave protocol and baudrate needed
-adc = ADC(Pin('X12'))                   # define ADC pin
-pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
-pin_mode.value(1)                       # enable manual pulse clearing (i.e. pin -> high)
-clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
-Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
-Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
 tp = pyb.Timer(1,freq=1000000)          # init timer for polling
 ti = pyb.Timer(2,freq=2000000)          # init timer for interrupts
+
+
+# PIN SETUP AND INITIAL POLARITY/INTERRUPT MODE
+#####
+Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
+Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
+adc = ADC(Pin('X12'))                   # define ADC pin
+pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
+pin_mode.value(0)                       # enable manual pulse clearing (i.e. pin -> high)
+clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
+polarpin = Pin('X6', Pin.OUT)           # define pin that chooses polarity   
+polarpin.value(0)                       # set to 1 to achieve positive polarity
+
+
+# DATA STORAGE AND COUNTERS
+data = array('H',[0]*4)     # buffer into which ADC readings are written to avoid memory allocation
+tim = bytearray(4)          # bytearray for microsecond, 4 byte timestamps
+t0=0                        # time at the beginning of the experiment
+const=0                     # counter for pulses read
+
 
 # DATA STORAGE AND COUNTERS
 data = array('H',[0]*8)     # buffer into which ADC readings are written to avoid memory allocation
@@ -96,6 +111,9 @@ def ADCp():
     return None
 
 def ADCi():
+    a=utime.ticks_ms()
+    clearpin.value(1)
+    clearpin.value(0)
     global const
     const = 0
     extint.enable()
@@ -104,13 +122,13 @@ def ADCi():
     while const < mnum:
         pass
     extint.disable()
-
-### DIAGNOSTIC FUNCTION
-def test():
-    buf = bytes('Hello!','utf-8')
-    conn.send(buf)
-    conn.send(buf)
+    b = utime.ticks_ms()-a
+    print(b)
     return None
+
+
+def polarity(polarity=0):
+    polarpin.value(polarity)
 
 # INTERRUPT CALLBACK FUNCTION
 def callback(line):
@@ -130,15 +148,17 @@ def cb(line):
 commands = {
     bytes(bytearray([0,0])) : Ir,    # read first gain potentiometer, then width
     bytes(bytearray([0,2])) : Is,                   # scan I2C
-    bytes(bytearray([1,0])) : lambda : Iw(0x2C),    # write gain pot
-    bytes(bytearray([1,1])) : lambda : Iw(0x2D),    # write width pot
+    bytes(bytearray([1,0])) : lambda : Iw(0x2D),    # write gain pot
+    bytes(bytearray([1,1])) : lambda : Iw(0x2C),    # write width pot
     bytes(bytearray([2,0])) : ADCp,                 # ADC polling
     bytes(bytearray([2,1])) : ADCi,                 # ADC interrupts
     bytes(bytearray([3,3])) : test,                 # communication test
+    bytes(bytearray([4,0])) : lambda:polarity(polarity=0),
+    bytes(bytearray([4,1])) : lambda:polarity(polarity=1)
 }
 
-extint = ExtInt('X1',ExtInt.IRQ_RISING,
-    pyb.Pin.PULL_NONE,callback)     # init hardware irq on pin X1, rising edge and executes function callback
+extint = ExtInt('X2',ExtInt.IRQ_RISING,
+    pyb.Pin.PULL_NONE,cb)     # init hardware irq on pin X1, rising edge and executes function callback
 extint.disable()                    # immediately disable interrupt to ensure it doesnt fill socket buffer
 
 # MAIN PROGRAM LOOP

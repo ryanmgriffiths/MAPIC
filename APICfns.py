@@ -73,6 +73,15 @@ class APIC:
         sercom = bytearray([3,3])
         self.sock.send(sercom)              # Send byte command.
         print(self.sock.recv(6))            # Receive a predicatble 6 chars over socket.
+    
+    def polarity(self,polarity=1):
+        '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
+        if polarity == 0:
+            sercom = bytearray([4,polarity])
+            self.sock.send(sercom)
+        else:
+            sercom = bytearray([4,polarity])
+            self.sock.send(sercom)              # Send byte command.
 
     def ADCi(self,datpts):
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples to procure, 

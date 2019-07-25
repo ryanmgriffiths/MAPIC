@@ -97,13 +97,16 @@ ADCout = Button(ADCframe, command=ADCi,text='Start')
 ADCout.grid(row=1,column=3)
 
 def pselect():
-    return None
+    apic.polarity(polarity=POL.get())
 
+POL = IntVar()
+
+    
 divide = Label(ADCframe,text='Polarity:').grid(row=1,column=5)
 
-ppolarity = Radiobutton(ADCframe,command=pselect,text='Positive',value=1)
+ppolarity = Radiobutton(ADCframe,command=pselect,text='Positive',value=1,variable=POL)
 ppolarity.grid(row=2,column=5,sticky=W)
-npolarity = Radiobutton(ADCframe,command=pselect,text='Negative',value=2)
+npolarity = Radiobutton(ADCframe,command=pselect,text='Negative',value=0,variable=POL)
 npolarity.grid(row=3,column=5,sticky=W)
 
 divide = Label(ADCframe,text='                   ').grid(row=1,
