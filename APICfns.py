@@ -23,7 +23,7 @@ class APIC:
         self.hist_count = 0                 #  counter for the number of histogram graphs
         
         # Find the number of files currently in the data directory.
-        for datafile in os.listdir('\histdata'):
+        for datafile in os.listdir('histdata'):
             if datafile.startswith('histogram'):
                 self.hist_count+=1
             elif datafile.startswith('datairq'):
@@ -49,6 +49,9 @@ class APIC:
         time.sleep(0.5)
         addresses = list(self.sock.recv(2))     # Recieve a list of 2 I2C addresses in list of 8 bit nums
         self.I2Caddrs = addresses
+    
+    def connect(self):
+        self.sock.connect(self.ipv4)
 
     def readI2C(self):
         '''Read the two I2C digital potentiometers. Creates apic items posGAIN and posWIDTH which store the potentiometer positions.'''

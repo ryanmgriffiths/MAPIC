@@ -21,10 +21,10 @@ I2Cframe = LabelFrame(root,text='I2C Digital Potentiometer Control')
 I2Cframe.grid(row=1,column=1,columnspan=6,rowspan=4)
 
 ADCframe = LabelFrame(root,text='Measurement Tools')
-ADCframe.grid(row=4,column=1,columnspan=5,rowspan=3,sticky=W)
+ADCframe.grid(row=5,column=1,columnspan=5,rowspan=3,sticky=W)
 
 diagnostic = LabelFrame(root,text='Diagnostic Message:')
-diagnostic.grid(row=5,column=6)
+diagnostic.grid(row=6,column=6)
 
 ### I2C TOOLS FRAME ###
 def read():
@@ -32,7 +32,7 @@ def read():
     Ireadlabel.config(text='Gain: %i , Width: %i' % (apic.posGAIN,apic.posWIDTH))
 
 def scan():
-    apic.scan()
+    apic.scanI2C()
     Iscanlabel.config(text=str(apic.I2Caddrs))
 
 Iread = Button(I2Cframe,text='Potentiometer Values',command=read).grid(row=1,column=1)
@@ -48,8 +48,8 @@ divide = Label(I2Cframe,text='                ').grid(row=1,column=2,rowspan=6,c
 var0 = IntVar()
 
 def write0():
-    gain = var0.get()
-    apic.write(gain,0)
+    gain = var0.get()-1
+    apic.writeI2C(gain,0)
 
 
 W0B = Button(I2Cframe,text='Set Gain Value',command=write0).grid(row=1,column=4,rowspan=2)
@@ -60,8 +60,8 @@ W0S.grid(row=1,column=5,rowspan=2)
 var1 = IntVar()
 
 def write1():
-    width = var1.get()
-    apic.write(width,1)
+    width = var1.get()-1
+    apic.writeI2C(width,1)
 
 W1B = Button(I2Cframe,text='Set Width Value',command=write1).grid(row=3,column=4,rowspan=2)
 W1S = Scale(I2Cframe,orient=HORIZONTAL,tickinterval=32,resolution=1,
@@ -72,7 +72,7 @@ W1S.grid(row=3,column=5,rowspan=2)
 numadc=StringVar()
 
 def ADCi():
-    datapts = numadc.get() 
+    datapts = int(numadc.get())
     adcidata = apic.ADCi(datapts)
     histogram = plt.Figure(dpi=100)
     ax1 = histogram.add_subplot(111)
@@ -115,11 +115,19 @@ errorbox = Message(diagnostic,text='Error messages.',
     bg='white',relief=RIDGE,width=220)
 errorbox.grid(row=1,column=1)
 
+
 ### Top menu bar ###
 menubar = Menu(root)
+
+def connect():
+    try:
+        apic.connect()
+    except:
+        errorbox.config(text='Connection failed')
+
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
-filemenu.add_command(label="Connect")
+filemenu.add_command(label="Connect",command=connect)
 filemenu.add_command(label="IP info")
 filemenu.add_command(label="Disconnect")
 filemenu.add_separator()

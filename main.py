@@ -10,6 +10,7 @@ from pyb import I2C
 from pyb import ADC
 from array import array
 from pyb import LED
+import micropython
 
 
 # OBJECT DEFINITIONS
@@ -57,7 +58,7 @@ for x in range(10):
 
 # OPERATION FUNCTIONS
 def Ir():
-    if i2c.is_ready(address):
+    if i2c.is_ready(0x2D) and i2c.is_ready(0x2C):
         gain = i2c.recv(1,addr=0x2D)
         width = i2c.recv(1,addr=0x2C)
         conn.send(gain)
