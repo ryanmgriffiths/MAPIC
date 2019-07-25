@@ -17,10 +17,10 @@ In order to install dependencies, open command prompt inside the folder containi
 $ pip install -r requirements.txt
 ```
 Which installs the following package versions:
-* numpy==1.16.2
-* pyserial==3.4
-* matplotlib==3.0.3
-* future==0.17.1
+* numpy v1.16.2
+* pyserial v3.4
+* matplotlib v3.0.3
+* future v0.17.1
 
 ### Operation
 * Once dependencies are installed, connect the control device to the APIC through micro USB.
@@ -28,3 +28,9 @@ Which installs the following package versions:
 * Launch the APIC.exe file to bring up the GUI.
 
 ## Extending the Program
+
+This application requires knowledge and use of the following python libraries/implementations in addition to those installed through pip:
+* [Tkinter](https://www.tutorialspoint.com/python/python_gui_programming)
+* [socket](https://docs.python.org/3/library/socket.html)
+* [micropython](https://docs.micropython.org/en/latest/)
+* [micropython for the pyboard D](https://pybd.io/hw/pybd_sfxw.html)
