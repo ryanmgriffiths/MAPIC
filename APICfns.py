@@ -31,15 +31,16 @@ class APIC:
 
         #self.ser = serial.Serial(address,115200,timeout=tout)          # Connect to the serial port & init serial obj.
     
-    def createfileno(self,fncount,DATA):
+    def createfileno(self,fncount,DATA=True):
         '''A function that is used to create the file number endings.'''
-        fnstring = '0000'
-        fnstring[-len(str(fncount)):] = str(fncount)
-        if data==True:
+        fncount=str(fncount)
+        fnstring = list('0000')
+        fnstring[-len(fncount):] = list(fncount)
+        if DATA==True:
             self.raw_dat_count+=1
         else:
             self.hist_count+=1
-        return fnstring
+        return ''.join(fnstring)
 
     def scanI2C(self):
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.'''
@@ -66,13 +67,6 @@ class APIC:
         sercom = bytearray([1,pot])
         self.sock.send(sercom)                  # Send byte command.
         self.sock.send(bytes([pos]))          # Convert desired pot value to bytes and send.
-
-    def test(self):
-        '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
-        
-        sercom = bytearray([3,3])
-        self.sock.send(sercom)              # Send byte command.
-        print(self.sock.recv(6))            # Receive a predicatble 6 chars over socket.
     
     def polarity(self,polarity=1):
         '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
@@ -107,7 +101,7 @@ class APIC:
             #times[x] = int.from_bytes(logtimem,'little')     
 
         # Save and return the arrays.
-        numpy.savetxt('datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
+        numpy.savetxt('datairq'+self.createfileno(self.raw_dat_count,DATA=True)+'.txt',data)
         self.raw_dat_count += 1
         #numpy.savetxt('timeirq.txt',times)
         return data             #,times

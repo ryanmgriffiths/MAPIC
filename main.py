@@ -152,7 +152,6 @@ commands = {
     bytes(bytearray([1,1])) : lambda : Iw(0x2C),    # write width pot
     bytes(bytearray([2,0])) : ADCp,                 # ADC polling
     bytes(bytearray([2,1])) : ADCi,                 # ADC interrupts
-    bytes(bytearray([3,3])) : test,                 # communication test
     bytes(bytearray([4,0])) : lambda:polarity(polarity=0),
     bytes(bytearray([4,1])) : lambda:polarity(polarity=1)
 }

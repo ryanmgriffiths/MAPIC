@@ -81,10 +81,9 @@ def ADCi():
     plt.title('Energy Spectrum')
     plt.xlabel('ADC Count')
     plt.ylabel('Counts')
-    plt.savefig('histogram'+apic.createfileno(apic.hist_count)+'.png')
+    plt.savefig('histogram'+apic.createfileno(apic.hist_count,DATA=True)+'.png')
     bar1 = FigureCanvasTkAgg(histogram, root)
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
-    plt.close()
 
 
 ADCil = Label(ADCframe, text='Interrupt Samples:')
