@@ -44,7 +44,7 @@ const=0                     # counter for pulses read
 
 
 # DATA STORAGE AND COUNTERS
-data = array('H',[0]*8)     # buffer into which ADC readings are written to avoid memory allocation
+data = array('H',[0]*4)     # buffer into which ADC readings are written to avoid memory allocation
 tim = bytearray(4)          # bytearray for microsecond, 4 byte timestamps
 t0=0                        # time at the beginning of the experiment
 const=0                     # counter for pulses read
@@ -131,7 +131,7 @@ def polarity(polarity=0):
     polarpin.value(polarity)
 
 # INTERRUPT CALLBACK FUNCTION
-def callback(line):
+def callback(argu):
     adc.read_timed(data,ti)         # 4 microsecond measurement from ADC at X12,
     global const                    # reference the global const counter
 #    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')     # timestamp the pulse
@@ -139,7 +139,7 @@ def callback(line):
     conn.send(data)                 # send adc sample over socket
     clearpin.value(1)               # perform pulse clearing
     clearpin.value(0)
-    const = const+1                 # pulse counter                                                                
+    const = const+1                 # pulse counter
 
 def cb(line):
     micropython.schedule(callback,'a')
