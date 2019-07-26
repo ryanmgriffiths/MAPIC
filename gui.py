@@ -4,12 +4,9 @@ import numpy
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import serial
-import time
 from array import array
 import datetime
 import APICfns as F
-
-apic = F.APIC('COM3',10,('192.168.4.1',8080))
 
 ### SETUP ###
 root = Tk()
@@ -44,6 +41,8 @@ Iscanlabel = Label(I2Cframe,text='---',bd=10)
 Iscanlabel.grid(row=4,column=1)
 
 divide = Label(I2Cframe,text='                ').grid(row=1,column=2,rowspan=6,columnspan=2)
+
+
 
 
 # WRITE 8 BIT VALUES TO POTENTIOMETERS
@@ -85,10 +84,9 @@ def ADCi():
     ax1.set_xlabel('ADC Count')
     ax1.set_.ylabel('Counts')
     plt.savefig('\histdata\histogram'+apic.raw_data_count+'.png')
+    apic.raw_data_count+=1
     bar1 = FigureCanvasTkAgg(histogram, root)
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
-
-
 
 ADCil = Label(ADCframe, text='Interrupt Samples:')
 ADCil.grid(row=1,column=1)
@@ -103,10 +101,10 @@ def pselect():
     apic.polarity(polarity=POL.get())
 
 POL = IntVar()
-
     
 divide = Label(ADCframe,text='Polarity:').grid(row=1,column=5)
 
+# CHANGE CIRCUIT POLARITY
 ppolarity = Radiobutton(ADCframe,command=pselect,text='Positive',value=1,variable=POL)
 ppolarity.grid(row=2,column=5,sticky=W)
 npolarity = Radiobutton(ADCframe,command=pselect,text='Negative',value=0,variable=POL)
@@ -115,19 +113,26 @@ npolarity.grid(row=3,column=5,sticky=W)
 divide = Label(ADCframe,text='                   ').grid(row=1,
     column=4,rowspan=6)
 
-### Diagnostic Frame ###
+### DIAGNOSTIC FRAME ###
 errorbox = Message(diagnostic,text='Error messages.',
     bg='white',relief=RIDGE,width=220)
 errorbox.grid(row=1,column=1)
 
-### Top menu bar ###
+### TOP MENU BAR ###
 menubar = Menu(root)
 
 def connect():
+    '''Attempt MANUAL connection to the pyboard.'''
     try:
         apic.connect()
     except:
         errorbox.config(text='Connection failed')
+
+def init_con():
+    try:
+        apic = F.APIC('COM3',10,('192.168.4.1',8080))
+    except:
+        errorbox.config(text='NOT CONNECTED')
 
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
@@ -143,4 +148,5 @@ helpmenu.add_command(label="About")
 menubar.add_cascade(label="Help", menu=helpmenu)
 
 root.config(menu=menubar)       # display menubar
+root.afer(1000, init_con)       # connect to pyboard after intitialising GUI
 root.mainloop()                 # run main gui program

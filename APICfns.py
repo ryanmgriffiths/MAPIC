@@ -1,9 +1,10 @@
+'''Module containing APIC Class with methods to control pyboard peripherals and the measurement protocols.'''
+
 import serial       # USB serial communication
 import socket       # Low level networking module
 import datetime     # for measuring rates
 import numpy
-import time
-import os
+import os           # OS implementation for file saving
 
 class APIC:
     '''Class representing the APIC. Methods invoke measurement and information 
@@ -22,30 +23,24 @@ class APIC:
         # SET FILE NUMBERS FOR DATA SAVING
         self.raw_dat_count = 0              #  counter for the number of raw data files
         
-        # Find the number of relevant files currently in the data directory.
+        # Find the number of relevant files currently in the data directory, select file version number.
         for datafile in os.listdir('histdata'):
             if datafile.startswith('datairq'):
                 self.raw_dat_count+=1
             else:
                 pass
 
-    def createfileno(self,fncount,DATA=True):
-        '''A function that is used to create the file number endings.'''
-        fncount=str(fncount)
-        fnstring = list('0000')
-        fnstring[-len(fncount):] = list(fncount)
-        if DATA==True:
-            self.raw_dat_count+=1
-        else:
-            self.hist_count+=1
+    def createfileno(self,fncount):
+        '''A function that is used to create the 4 digit file number endings based on latest version'''
+        fncount=str(fncount)                        # int fncount to string 
+        fnstring = list('0000')                     # convert to mutable list
+        fnstring[-len(fncount):] = list(fncount)    # replace last x terms with new version        
         return ''.join(fnstring)
 
     def scanI2C(self):
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.'''
-        
         sercom = bytearray([0,2])
         self.sock.send(sercom)                  # Send byte code to init scan protocol on board
-        time.sleep(0.5)
         addresses = list(self.sock.recv(2))     # Recieve a list of 2 I2C addresses in list of 8 bit nums
         self.I2Caddrs = addresses
     
@@ -54,7 +49,8 @@ class APIC:
         self.sock.connect(self.ipv4)
 
     def readI2C(self):
-        '''Read the two I2C digital potentiometers. Creates apic items posGAIN and posWIDTH which store the potentiometer positions.'''
+        '''Read the two I2C digital potentiometers. Creates apic items posGAIN and posWIDTH which store the potentiometer 
+        positions.'''
         sercom = bytearray([0,0])                                     
         self.sock.send(sercom)                                              # Send byte command.
         self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive gain position
@@ -74,7 +70,7 @@ class APIC:
             self.sock.send(sercom)
         else:
             sercom = bytearray([4,polarity])
-            self.sock.send(sercom)              # Send byte command.
+            self.sock.send(sercom)
 
     def ADCi(self,datpts):
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples , 
@@ -102,5 +98,4 @@ class APIC:
 
         # Save and return the arrays.
         numpy.savetxt('\histdata\datairq'+self.createfileno(self.raw_dat_count,DATA=True)+'.txt',self.data)
-        self.raw_dat_count += 1
         #numpy.savetxt('timeirq.txt',times)
