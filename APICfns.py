@@ -50,6 +50,7 @@ class APIC:
         self.I2Caddrs = addresses
     
     def connect(self):
+        '''Reconnect to the pyboard.'''
         self.sock.connect(self.ipv4)
 
     def readI2C(self):
@@ -76,7 +77,7 @@ class APIC:
             self.sock.send(sercom)              # Send byte command.
 
     def ADCi(self,datpts):
-        '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples to procure, 
+        '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples , 
         returns arrays of 1) 8 samples of peaks in ADC counts and times at the end of each peak in microseconds 
         from the start of the experiment.'''
         sercom = bytearray([2,1])
@@ -103,4 +104,3 @@ class APIC:
         numpy.savetxt('\histdata\datairq'+self.createfileno(self.raw_dat_count,DATA=True)+'.txt',self.data)
         self.raw_dat_count += 1
         #numpy.savetxt('timeirq.txt',times)
-        return data             #,times

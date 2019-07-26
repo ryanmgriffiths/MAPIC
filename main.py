@@ -131,7 +131,8 @@ def polarity(polarity=0):
     polarpin.value(polarity)
 
 # INTERRUPT CALLBACK FUNCTION
-def callback(argu):
+def callback(line):
+    extint.disable()
     adc.read_timed(data,ti)         # 4 microsecond measurement from ADC at X12,
     global const                    # reference the global const counter
 #    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')     # timestamp the pulse
@@ -140,10 +141,11 @@ def callback(argu):
     clearpin.value(1)               # perform pulse clearing
     clearpin.value(0)
     const = const+1                 # pulse counter
-
+    extint.enable()
+'''
 def cb(line):
     micropython.schedule(callback,'a')
-
+'''
 # COMMAND CODES: bytearrays that the main program looks for to execute functions above.
 commands = {
     bytes(bytearray([0,0])) : Ir,    # read first gain potentiometer, then width
@@ -157,9 +159,9 @@ commands = {
 }
 
 extint = ExtInt('X2',ExtInt.IRQ_RISING,
-    pyb.Pin.PULL_NONE,cb)     # init hardware irq on pin X1, rising edge and executes function callback
+    pyb.Pin.PULL_NONE,callback)     # init hardware irq on pin X1, rising edge and executes function callback
 extint.disable()                    # immediately disable interrupt to ensure it doesnt fill socket buffer
-
+#irq = Pin('X2').irq(handler=cb,trigger=Pin.IRQ_RISING,priority=10, wake=None, hard=True)
 # MAIN PROGRAM LOOP
 while True:
     mode = conn.recv(2)         # wait until the board receives the 2 byte command code, no timeout

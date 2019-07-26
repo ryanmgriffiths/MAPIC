@@ -45,6 +45,8 @@ Iscanlabel.grid(row=4,column=1)
 
 divide = Label(I2Cframe,text='                ').grid(row=1,column=2,rowspan=6,columnspan=2)
 
+
+# WRITE 8 BIT VALUES TO POTENTIOMETERS
 var0 = IntVar()
 
 def write0():
@@ -75,15 +77,17 @@ def ADCi():
     datapts = int(numadc.get())
     adcidata = apic.ADCi(datapts)
     histogram = plt.Figure(dpi=100)
+    global ax1
     ax1 = histogram.add_subplot(111)
     hdat = numpy.average(adcidata,axis=1)
     ax1.hist(hdat,200,(0,3100),color='b',edgecolor='black')
-    plt.title('Energy Spectrum')
-    plt.xlabel('ADC Count')
-    plt.ylabel('Counts')
-    plt.savefig('\histdata\histogram'+apic.createfileno(apic.hist_count,DATA=False)+'.png')
+    ax1.set_title('Energy Spectrum')
+    ax1.set_xlabel('ADC Count')
+    ax1.set_.ylabel('Counts')
+    plt.savefig('\histdata\histogram'+apic.raw_data_count+'.png')
     bar1 = FigureCanvasTkAgg(histogram, root)
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
+
 
 
 ADCil = Label(ADCframe, text='Interrupt Samples:')
@@ -111,12 +115,10 @@ npolarity.grid(row=3,column=5,sticky=W)
 divide = Label(ADCframe,text='                   ').grid(row=1,
     column=4,rowspan=6)
 
-
 ### Diagnostic Frame ###
 errorbox = Message(diagnostic,text='Error messages.',
     bg='white',relief=RIDGE,width=220)
 errorbox.grid(row=1,column=1)
-
 
 ### Top menu bar ###
 menubar = Menu(root)
