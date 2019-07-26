@@ -8,6 +8,8 @@ from array import array
 import datetime
 import APICfns as F
 
+apic = F.APIC('COM3',10,('192.168.4.1',8080))
+
 ### SETUP ###
 root = Tk()
 root.title('APIC')
@@ -73,18 +75,25 @@ W1S.grid(row=3,column=5,rowspan=2)
 numadc=StringVar()
 
 def ADCi():
-    datapts = int(numadc.get())
-    adcidata = apic.ADCi(datapts)
+    datapoints = int(numadc.get())
+    apic.ADCi(datapoints)
+    adcidata = apic.data
     histogram = plt.Figure(dpi=100)
     global ax1
     ax1 = histogram.add_subplot(111)
     hdat = numpy.average(adcidata,axis=1)
-    ax1.hist(hdat,200,(0,3100),color='b',edgecolor='black')
+
+    #hdat = hdat[hdat!=0]
+    
+    #hdat = apic.ps_correction(hdat)
+
+
+    ax1.hist(hdat,200,color='b',edgecolor='black')
     ax1.set_title('Energy Spectrum')
     ax1.set_xlabel('ADC Count')
-    ax1.set_.ylabel('Counts')
-    plt.savefig('\histdata\histogram'+apic.raw_data_count+'.png')
-    apic.raw_data_count+=1
+    ax1.set_ylabel('Counts')
+    #plt.savefig('histdata\histogram'+str(apic.raw_dat_count)+'.png')
+    apic.raw_dat_count+=1
     bar1 = FigureCanvasTkAgg(histogram, root)
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
 
@@ -96,6 +105,7 @@ ADCie.grid(row=1,column=2)
 
 ADCout = Button(ADCframe, command=ADCi,text='Start')
 ADCout.grid(row=1,column=3)
+
 
 def pselect():
     apic.polarity(polarity=POL.get())
@@ -118,25 +128,16 @@ errorbox = Message(diagnostic,text='Error messages.',
     bg='white',relief=RIDGE,width=220)
 errorbox.grid(row=1,column=1)
 
+progress = ttk.Progressbar(ADCframe,value=0,maximum=100)
+progress.grid(row=2,column=1)
+
+
 ### TOP MENU BAR ###
 menubar = Menu(root)
 
-def connect():
-    '''Attempt MANUAL connection to the pyboard.'''
-    try:
-        apic.connect()
-    except:
-        errorbox.config(text='Connection failed')
-
-def init_con():
-    try:
-        apic = F.APIC('COM3',10,('192.168.4.1',8080))
-    except:
-        errorbox.config(text='NOT CONNECTED')
-
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
-filemenu.add_command(label="Connect",command=connect)
+filemenu.add_command(label="Connect")
 filemenu.add_command(label="IP info")
 filemenu.add_command(label="Disconnect")
 filemenu.add_separator()
@@ -148,5 +149,4 @@ helpmenu.add_command(label="About")
 menubar.add_cascade(label="Help", menu=helpmenu)
 
 root.config(menu=menubar)       # display menubar
-root.afer(1000, init_con)       # connect to pyboard after intitialising GUI
 root.mainloop()                 # run main gui program

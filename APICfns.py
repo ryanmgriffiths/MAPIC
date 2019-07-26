@@ -23,6 +23,8 @@ class APIC:
         # SET FILE NUMBERS FOR DATA SAVING
         self.raw_dat_count = 0              #  counter for the number of raw data files
         
+
+
         # Find the number of relevant files currently in the data directory, select file version number.
         for datafile in os.listdir('histdata'):
             if datafile.startswith('datairq'):
@@ -36,6 +38,9 @@ class APIC:
         fnstring = list('0000')                     # convert to mutable list
         fnstring[-len(fncount):] = list(fncount)    # replace last x terms with new version        
         return ''.join(fnstring)
+    
+    def ps_correction(self,datarray):
+            return numpy.log((datarray/0.0015))/2.0799
 
     def scanI2C(self):
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.'''
@@ -77,25 +82,26 @@ class APIC:
         returns arrays of 1) 8 samples of peaks in ADC counts and times at the end of each peak in microseconds 
         from the start of the experiment.'''
         sercom = bytearray([2,1])
-        self.sock.send(sercom)              # Send byte command
         
-        readm = bytearray(16)               # Bytearray for receiving ADC data (with no mem allocation)
+        readm = bytearray(8)               # Bytearray for receiving ADC data (with no mem allocation)
         #logtimem = bytearray(4)            # Bytearray to receive times
 
         self.data = numpy.zeros((datpts,4),dtype='uint16')           # ADC values numpy array
         #times = numpy.zeros(datpts,dtype='uint32')             # End of peak timestamps array
         datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
-        self.sock.send(sercom)                                  # Send byte command
+        self.sock.send(sercom)              # Send byte command
         self.sock.send(datptsb)                                 # send num if data points to sample
         
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
         for x in range(datpts):
-            self.sock.recv_into(readm,16)
+            self.sock.recv_into(readm,8)
             self.data[x,:] = numpy.frombuffer(readm,dtype='uint16')
-            print(x)
             #self.sock.recv_into(logtimem,4)
             #times[x] = int.from_bytes(logtimem,'little')     
 
+        #self.data = self.data*(3.3/4096)
+        #self.data = self.ps_correction(self.data)
+
         # Save and return the arrays.
-        numpy.savetxt('\histdata\datairq'+self.createfileno(self.raw_dat_count,DATA=True)+'.txt',self.data)
+        numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',self.data)
         #numpy.savetxt('timeirq.txt',times)
