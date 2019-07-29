@@ -26,6 +26,12 @@ diagnostic = LabelFrame(root,text='Diagnostic Message:')
 diagnostic.grid(row=6,column=6)
 
 ### I2C TOOLS FRAME ###
+
+def testI2C0():
+    apic.testI2C(0)
+def testI2C1():
+    apic.testI2C(1)
+
 def read():
     apic.readI2C()
     Ireadlabel.config(text='Gain: %i , Width: %i' % (apic.posGAIN,apic.posWIDTH))
@@ -147,6 +153,11 @@ menubar.add_cascade(label="Connection", menu=filemenu)
 helpmenu = Menu(menubar, tearoff=0)
 helpmenu.add_command(label="About")
 menubar.add_cascade(label="Help", menu=helpmenu)
+
+calibrationmenu = Menu(menubar, tearoff=0)
+calibrationmenu.add_command(label='Pot Calib 0x2D',command=testI2C0)
+calibrationmenu.add_command(label='Pot Calib 0x2C',command=testI2C1)
+menubar.add_cascade(label='Calibration',menu=calibrationmenu)
 
 root.config(menu=menubar)       # display menubar
 root.mainloop()                 # run main gui program

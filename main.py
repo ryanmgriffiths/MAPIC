@@ -12,7 +12,7 @@ from pyb import I2C
 from pyb import ADC
 from array import array
 from pyb import LED
-micropython.alloc_emergency_exception_buf(100)
+micropython.alloc_emergency_exception_buf(100) # For interrupt debugging
 
 
 # OBJECT DEFINITIONS
@@ -29,11 +29,13 @@ ti = pyb.Timer(2,freq=2000000)          # init timer for interrupts
 #####
 Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
 Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
-adc = ADC(Pin('X12'))                   # define ADC pin
+adc = ADC(Pin('X12'))                   # define ADC pin for pulse stretcher measurement
+testadc = ADC(Pin('X3'))                # define ADC pin for measuring internal test pulses
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
 pin_mode.value(0)                       # enable manual pulse clearing (i.e. pin -> high)
 clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
 polarpin = Pin('X6', Pin.OUT)           # define pin that chooses polarity   
+testpulsepin = Pin('X1',Pin.OUT)        # pin to enable internal test pulses on APIC
 polarpin.value(0)                       # set to 1 to achieve positive polarity
 
 
@@ -41,7 +43,7 @@ polarpin.value(0)                       # set to 1 to achieve positive polarity
 data = array('H',[0]*4)     # buffer into which ADC readings are written to avoid memory allocation
 tim = bytearray(4)          # bytearray for microsecond, 4 byte timestamps
 t0=0                        # time at the beginning of the experiment
-const=0                     # counter for pulses read
+count=0                     # counter for pulses read
 
 
 # SET UP WIRELESS ACCESS POINT
@@ -97,58 +99,73 @@ def ADCp():
         conn.send(buf)
     return None
 
+def I2C_test(address):
+    for x in range(0,256,10):
+        b = bytearray([0x00,x])
+        i2c.send(b,addr=address)
+        print(x)
+        utime.sleep(5)
+
+### ADC INTERRUPT MEASUREMENT CODE ###
+
+# MAIN ADC MEASUREMENT CODE
 def ADCi():
     a=utime.ticks_ms()
     clearpin.value(1)
     clearpin.value(0)
-    global const
-    const = 0
+    global count
+    count = 0
     mnum = int.from_bytes(conn.recv(8),'little')
     #t0 = int(utime.ticks_us())
     extint.enable()
-    while const < mnum:
+    while count < mnum:
         pass
     extint.disable()
     b = utime.ticks_ms()-a
     print(mnum/(b/1000))
 
-
-def polarity(polarity=0):
-    polarpin.value(polarity)
-
-# INTERRUPT CALLBACK FUNCTION
+# ISR CALLBACK FUNCTION
 def callback(arg):
     adc.read_timed(data,ti)         # 4 microsecond measurement from ADC at X12,
-    global const                    # reference the global const counter
+    global count                    # reference the global count counter
 #    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')     # timestamp the pulse
 #    conn.send(tim)                 # send timestamp over socket
     conn.send(data)                 # send adc sample over socket
     clearpin.value(1)               # perform pulse clearing
     clearpin.value(0)
-    const = const+1                 # pulse counter
+    count = count+1                 # pulse counter
 
+# TEMP FIX FOR ISR OVERFLOW
+# Uses micropython.schedule to delay interrupts
+# that occur during callback.
 def cb(line):
     micropython.schedule(callback,'a')
 
-# COMMAND CODES: bytearrays that the main program looks for to execute functions above.
-commands = {
-    bytes(bytearray([0,0])) : Ir,    # read first gain potentiometer, then width
-    bytes(bytearray([0,2])) : Is,                   # scan I2C
-    bytes(bytearray([1,0])) : lambda : Iw(0x2D),    # write gain pot
-    bytes(bytearray([1,1])) : lambda : Iw(0x2C),    # write width pot
-    bytes(bytearray([2,0])) : ADCp,                 # ADC polling
-    bytes(bytearray([2,1])) : ADCi,                 # ADC interrupts
-    bytes(bytearray([4,0])) : lambda:polarity(polarity=0),
-    bytes(bytearray([4,1])) : lambda:polarity(polarity=1)
-}
-
+# INTERRUPT INIT
 extint = ExtInt('X2',ExtInt.IRQ_RISING,
     pyb.Pin.PULL_NONE,cb)     # init hardware irq on pin X1, rising edge and executes function callback
-extint.disable()                    # immediately disable interrupt to ensure it doesnt fill socket buffer
-print(const)
-#irq = Pin('X2').irq(handler=cb,trigger=Pin.IRQ_RISING,priority=10, wake=None, hard=True)
-# MAIN PROGRAM LOOP
+extint.disable()              # immediately disable interrupt
 
+#irq = Pin('X2').irq(handler=cb,trigger=Pin.IRQ_RISING,priority=10, wake=None, hard=True)
+
+# COMMAND CODES: bytearrays that the main program uses to execute functions above/simple
+# functions that are defined in the dict
+commands = {
+    bytes(bytearray([0,0])) : Ir,    # read first gain potentiometer, then width
+    bytes(bytearray([0,2])) : Is,                       # scan I2C
+    bytes(bytearray([1,0])) : lambda : Iw(0x2D),        # write gain pot
+    bytes(bytearray([1,1])) : lambda : Iw(0x2C),        # write width pot
+    bytes(bytearray([2,0])) : ADCp,                     # ADC polling - LEGACY
+    bytes(bytearray([2,1])) : ADCi,                     # ADC interrupts
+    bytes(bytearray([4,0])) : lambda : polarpin.value(0),       # Negative polarity
+    bytes(bytearray([4,1])) : lambda : polarpin.value(1),       # Positive polarity
+    bytes((bytearray[5,0])) : lambda: I2C_test(0x2D),           # Test 0x2D voltage/resistance linearity 
+    bytes((bytearray[5,1])) : lambda: I2C_test(0x2C),           # Test 0x2C voltage/resistance linearity
+    bytes(bytearray([6,0])) : lambda: testpulsepin.value(0),    # disable test pulses
+    bytes(bytearray([6,1])) : lambda: testpulsepin.value(1)     # enable test pulses
+}
+
+# MAIN PROGRAM LOOP
 while True:
     mode = conn.recv(2)         # wait until the board receives the 2 byte command code, no timeout
-    commands[mode]()            # reference dictionary and run the corresponding function
+    commands[mode]()            # reference commands dictionary and run the corresponding function

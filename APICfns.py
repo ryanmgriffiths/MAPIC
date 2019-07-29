@@ -61,6 +61,16 @@ class APIC:
         self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive gain position
         self.posWIDTH = int.from_bytes(self.sock.recv(1),'little')          # receive width position
 
+    def testI2C(self,pot):
+        '''Initiate calibration test for the potentiometers.'''
+        sercom = (bytearray[5,pot])
+        self.sock.send(sercom)
+
+    def testpulses(self,value):
+        '''Enable test pulses on APIC, value=1 is on, value=0 is off.'''
+        sercom=bytearray([6,value])
+        self.sock.send(sercom)
+
     def writeI2C(self,pos,pot):
         '''Writes 8 bit values to one the two digital potentiometers. One argument pot dictates which potentiometer to
         write to, the conversion of the byte command is done on the board and an actual hex address is assigned there.'''
