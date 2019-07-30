@@ -9,7 +9,6 @@ import os           # OS implementation for file saving
 class APIC:
     '''Class representing the APIC. Methods invoke measurement and information 
     requests to the board and manage communication over the network socket. I.e. control the board from the PC with this class.'''
-    
     def __init__(self,address,tout,ipv4):   # Intialise connection variables.
         self.tout = tout                    # Timeout for both serial and socket connections in seconds.
         self.address = address              # COM port/or dev/tty OS dependent.
@@ -19,12 +18,10 @@ class APIC:
         self.sock.settimeout(tout)          # Socket timeout.
         self.sock.connect(ipv4)             # Init connection to the socket.
         #self.ser = serial.Serial(address,115200,timeout=tout)          # Connect to the serial port & init serial obj.
-    
+
         # SET FILE NUMBERS FOR DATA SAVING
         self.raw_dat_count = 0              #  counter for the number of raw data files
-        
-
-
+    
         # Find the number of relevant files currently in the data directory, select file version number.
         for datafile in os.listdir('histdata'):
             if datafile.startswith('datairq'):
@@ -39,9 +36,15 @@ class APIC:
         fnstring[-len(fncount):] = list(fncount)    # replace last x terms with new version        
         return ''.join(fnstring)
     
-    def ps_correction(self,datarray):
-            return numpy.log((datarray/0.0015))/2.0799
-
+    def drain_socket(self):
+        '''Empty socket of any interrupt overflow data, call after every instance of interrupt usage.'''
+        self.sock.settimeout(0)
+        while True:
+            try:
+                self.sock.recv(2)
+            except:
+                break
+    
     def scanI2C(self):
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.'''
         sercom = bytearray([0,2])
@@ -61,23 +64,19 @@ class APIC:
         self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive gain position
         self.posWIDTH = int.from_bytes(self.sock.recv(1),'little')          # receive width position
 
-    def testI2C(self,pot):
-        '''Initiate calibration test for the potentiometers.'''
-        sercom = (bytearray[5,pot])
-        self.sock.send(sercom)
-
-    def testpulses(self,value):
-        '''Enable test pulses on APIC, value=1 is on, value=0 is off.'''
-        sercom=bytearray([6,value])
-        self.sock.send(sercom)
-
     def writeI2C(self,pos,pot):
         '''Writes 8 bit values to one the two digital potentiometers. One argument pot dictates which potentiometer to
         write to, the conversion of the byte command is done on the board and an actual hex address is assigned there.'''
         sercom = bytearray([1,pot])
         self.sock.send(sercom)                  # Send byte command.
         self.sock.send(bytes([pos]))          # Convert desired pot value to bytes and send.
-    
+
+    ### NOT ENABLED YET ###
+    def testpulses(self,value):
+        '''Enable test pulses on APIC, value=1 is on, value=0 is off.'''
+        sercom=bytearray([6,value])
+        self.sock.send(sercom)
+
     def polarity(self,polarity=1):
         '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
         if polarity == 0:
@@ -86,6 +85,38 @@ class APIC:
         else:
             sercom = bytearray([4,polarity])
             self.sock.send(sercom)
+    
+    def mV(self, adc_counts):
+        '''Convert ADC counts to millivolts, takes ADC count data array ot single value.'''
+        return adc_counts*(3300/4096)
+    
+    def calibration(self):
+        '''Perform a calibration of the setup, arbitrary time and creates two items of the APIC class
+        containing the data received.'''
+        # send byte command code
+        sercom = bytearray([5,0])
+        self.sock.send(sercom)
+
+        readout = bytearray(8)
+        readin = bytearray(8)
+        
+        # define lists to append input/output data to
+        self.outputpulses = []
+        self.inputpulses = []
+
+        # while loop to take data from the ADC until a timeout
+        while True:
+            try:
+                self.sock.recv_into(readout)
+                self.sock.recv_into(readin)
+                self.outputpulses.append(numpy.average(numpy.frombuffer(readout,dtype='unint16')))
+                self.inputpulses.append(numpy.average(numpy.frombuffer(readin,dtype='unint16')))
+            except:
+                print('Socket timeout!')
+                break
+
+        self.outputpulses = self.mV(numpy.array(self.outputpulses))
+        self.inputpulses = self.mV(numpy.array(self.inputpulses))
 
     def ADCi(self,datpts):
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples , 
@@ -104,11 +135,12 @@ class APIC:
         
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
         for x in range(datpts):
-            self.sock.recv_into(readm,8)
+            self.sock.recv_into(readm)
             self.data[x,:] = numpy.frombuffer(readm,dtype='uint16')
+                
             #self.sock.recv_into(logtimem,4)
-            #times[x] = int.from_bytes(logtimem,'little')     
-
+            #times[x] = int.from_bytes(logtimem,'little')
+        
         #self.data = self.data*(3.3/4096)
         #self.data = self.ps_correction(self.data)
 
