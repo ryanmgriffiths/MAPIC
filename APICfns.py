@@ -45,10 +45,15 @@ class APIC:
             except:
                 break
     
+    def sendcmd(self,a,b):
+        '''Send a bytearray command using two of 8 bit unisnged integers.\n
+        a is the first command byte for type of command \n
+        b is second command byte for subsection.'''
+        self.sock.send(bytearray([a,b]))
+
     def scanI2C(self):
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.'''
-        sercom = bytearray([0,2])
-        self.sock.send(sercom)                  # Send byte code to init scan protocol on board
+        self.sendcmd((0,2))
         addresses = list(self.sock.recv(2))     # Recieve a list of 2 I2C addresses in list of 8 bit nums
         self.I2Caddrs = addresses
     
@@ -59,43 +64,39 @@ class APIC:
     def readI2C(self):
         '''Read the two I2C digital potentiometers. Creates apic items posGAIN and posWIDTH which store the potentiometer 
         positions.'''
-        sercom = bytearray([0,0])                                     
-        self.sock.send(sercom)                                              # Send byte command.
+        self.sendcmd(0,0)                                                   # Send byte command.
         self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive gain position
         self.posWIDTH = int.from_bytes(self.sock.recv(1),'little')          # receive width position
 
     def writeI2C(self,pos,pot):
         '''Writes 8 bit values to one the two digital potentiometers. One argument pot dictates which potentiometer to
         write to, the conversion of the byte command is done on the board and an actual hex address is assigned there.'''
-        sercom = bytearray([1,pot])
-        self.sock.send(sercom)                  # Send byte command.
+        self.sendcmd(1,pot)
         self.sock.send(bytes([pos]))          # Convert desired pot value to bytes and send.
 
     ### NOT ENABLED YET ###
     def testpulses(self,value):
         '''Enable test pulses on APIC, value=1 is on, value=0 is off.'''
-        sercom=bytearray([6,value])
-        self.sock.send(sercom)
+        self.sendcmd(6,value)
 
     def polarity(self,polarity=1):
         '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
-        if polarity == 0:
-            sercom = bytearray([4,polarity])
-            self.sock.send(sercom)
-        else:
-            sercom = bytearray([4,polarity])
-            self.sock.send(sercom)
-    
+        self.sendcmd(4,0)
+           
     def mV(self, adc_counts):
         '''Convert ADC counts to millivolts, takes ADC count data array ot single value.'''
         return adc_counts*(3300/4096)
     
+    def rateaq(self):
+        self.sendcmd(5,1)
+        rate = int.from_bytes(self.sock.recv(4),'little',signed=False)
+        return rate
+
     def calibration(self):
         '''Perform a calibration of the setup, arbitrary time and creates two items of the APIC class
         containing the data received.'''
         # send byte command code
-        sercom = bytearray([5,0])
-        self.sock.send(sercom)
+        self.sendcmd(5,0)
 
         readout = bytearray(8)
         readin = bytearray(8)
@@ -122,15 +123,14 @@ class APIC:
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples , 
         returns arrays of 1) 8 samples of peaks in ADC counts and times at the end of each peak in microseconds 
         from the start of the experiment.'''
-        sercom = bytearray([2,1])
-        
+
         readm = bytearray(8)               # Bytearray for receiving ADC data (with no mem allocation)
         #logtimem = bytearray(4)            # Bytearray to receive times
 
         self.data = numpy.zeros((datpts,4),dtype='uint16')           # ADC values numpy array
         #times = numpy.zeros(datpts,dtype='uint32')             # End of peak timestamps array
         datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
-        self.sock.send(sercom)              # Send byte command
+        self.sendcmd(2,1)                                       # Send byte command
         self.sock.send(datptsb)                                 # send num if data points to sample
         
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
@@ -140,9 +140,6 @@ class APIC:
                 
             #self.sock.recv_into(logtimem,4)
             #times[x] = int.from_bytes(logtimem,'little')
-        
-        #self.data = self.data*(3.3/4096)
-        #self.data = self.ps_correction(self.data)
 
         # Save and return the arrays.
         numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',self.data)

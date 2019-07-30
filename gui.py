@@ -9,7 +9,8 @@ from array import array
 import datetime
 import APICfns as F
 
-apic = F.APIC('COM3',10,('192.168.4.1',8080))
+default_timeout = 10
+apic = F.APIC('COM3',default_timeout,('192.168.4.1',8080))
 
 ### SETUP ###
 root = Tk()
@@ -24,7 +25,7 @@ ADCframe = LabelFrame(root,text='Measurement Tools')
 ADCframe.grid(row=5,column=1,columnspan=5,rowspan=3,sticky=W)
 
 diagnostic = LabelFrame(root,text='Diagnostic Message:')
-diagnostic.grid(row=6,column=6,rowspan=2)
+diagnostic.grid(row=6,column=6,rowspan=3)
 
 ### I2C TOOLS FRAME ###
 def read():
@@ -70,6 +71,7 @@ W1S.grid(row=3,column=5,rowspan=2)
 numadc=StringVar()
 
 def ADCi():
+
     datapoints = int(numadc.get())          # get desired number of samples from the tkinter text entry
     apic.ADCi(datapoints)                   # take data using ADCi protocol
     adcidata = apic.data
@@ -79,7 +81,7 @@ def ADCi():
     hdat = numpy.average(adcidata,axis=1)   # average the ADC peak data over the columns
     #hdat = hdat[hdat!=0]                   # remove zeros
     #hdat = apic.ps_correction(hdat)        # correct to a voltage
-    ax1.hist(hdat,200,(100,4000),color='b',edgecolor='black')
+    ax1.hist(hdat,256,(100,4000),color='b',edgecolor='black')
     ax1.set_title('Energy Spectrum')
     ax1.set_xlabel('ADC Count')
     ax1.set_ylabel('Counts')
@@ -88,7 +90,7 @@ def ADCi():
     bar1 = FigureCanvasTkAgg(histogram, root)
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
     apic.drain_socket()     # drain socket to clear interrupt overflows
-
+    apic.sock.settimeout(default_timeout)
 
 ADCil = Label(ADCframe, text='Interrupt Samples:')
 ADCil.grid(row=1,column=1)
@@ -112,7 +114,7 @@ ppolarity.grid(row=2,column=5,sticky=W)
 npolarity = Radiobutton(ADCframe,command=pselect,text='Negative',value=0,variable=POL)
 npolarity.grid(row=3,column=5,sticky=W)
 
-divide = Label(ADCframe,text='                   ').grid(row=1,
+divide1 = Label(ADCframe,text='                   ').grid(row=1,
     column=4,rowspan=6)
 
 ### DIAGNOSTIC FRAME ###
@@ -135,9 +137,17 @@ def calibrate():
     ax2.legend()
     fig.savefig('calibration.png')
 
+def rateaq():
+    rate = apic.rateaq()
+    errorbox.config(text=str(rate))
+
 calibration = Button(diagnostic,text='Gain Calibration',
     command=calibrate)
 calibration.grid(row=2,column=1)
+
+ratebutton = Button(diagnostic,text='Rate'
+    ,command = rateaq)
+ratebutton.grid(row=3,column=1)
 
 progress = ttk.Progressbar(ADCframe,value=0,maximum=100)
 progress.grid(row=2,column=1)

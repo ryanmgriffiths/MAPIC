@@ -1,6 +1,7 @@
 # main.py -- put your code here!
 #Import relevant modules
 import network
+import pyb
 import utime
 import machine
 import micropython
@@ -61,9 +62,9 @@ print('Connected!')                     ### diagnostic purposes only, not seen b
 def Ir():
     if i2c.is_ready(0x2D) and i2c.is_ready(0x2C):
         gain = i2c.recv(1,addr=0x2D)
-        width = i2c.recv(1,addr=0x2C)
+        threshold = i2c.recv(1,addr=0x2C)
         conn.send(gain)
-        conn.send(width)
+        conn.send(threshold)
     else:
         raise Exception
     return None
@@ -105,6 +106,22 @@ def cbcal(line):
     clearpin.value(0)
     calibadc.read_timed(calibdata)
 
+### SOURCE RATE COUNTER ###
+def rateaq():
+    global ratecounter
+    ratecounter=0
+    a=utime.ticks_ms()
+    rateint = ExtInt('X2',ExtInt.IRQ_RISING,pyb.Pin.PULL_NONE,ratecount)
+    pyb.delay(3000)
+    rateint.disable()
+    b = utime.ticks_ms()-a
+    finalrate = round((ratecounter/(b*1000))).to_bytes(4,
+        'little',False)
+    conn.send(finalrate)
+
+def ratecount(line):
+    global ratecounter
+    ratecounter = ratecounter+1
 
 ### ADC INTERRUPT MEASUREMENT CODE ###
 
@@ -121,11 +138,13 @@ def ADCi():
     while count < mnum:
         pass
     extint.disable()
+    extint = None
     b = utime.ticks_ms()-a
     print(mnum/(b/1000))
 
 # ISR CALLBACK FUNCTION
 def callback(arg):
+    irqstate = pyb.disable_irq()
     adc.read_timed(data,ti)         # 4 microsecond measurement from ADC at X12,
     global count                    # reference the global count counter
 #    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')     # timestamp the pulse
@@ -133,7 +152,8 @@ def callback(arg):
     conn.send(data)                 # send adc sample over socket
     clearpin.value(1)               # perform pulse clearing
     clearpin.value(0)
-    count = count+1                 # pulse counter
+    count+=1                 # pulse counter
+    pyb.enable_irq(irqstate)
 
 # TEMP FIX FOR ISR OVERFLOW
 # Uses micropython.schedule to delay interrupts
@@ -141,24 +161,27 @@ def callback(arg):
 def cb(line):
     micropython.schedule(callback,'a')
 
-# INTERRUPT INIT
-extint = ExtInt('X2',ExtInt.IRQ_RISING,pyb.Pin.PULL_NONE,cb)     # init hardware irq on pin X1, rising edge and executes function callback
-extint.disable()              # immediately disable interrupt
 
 #irq = Pin('X2').irq(handler=cb,trigger=Pin.IRQ_RISING,priority=10, wake=None, hard=True)
-
+extint = ExtInt('X2',ExtInt.IRQ_RISING,pyb.Pin.PULL_NONE,cb)     # init hardware irq on pin X1, rising edge and executes function callback
+extint.disable()
 # COMMAND CODES: bytearrays that the main program uses to execute functions above/simple
 # functions that are defined in the dict
 commands = {
-    bytes(bytearray([0,0])) : Ir,    # read first gain potentiometer, then width
+# bytes(bytearray([])) : ,
+    bytes(bytearray([0,0])) : Ir,    # read first gain potentiometer, then threshold
+
     bytes(bytearray([0,2])) : Is,                       # scan I2C
     bytes(bytearray([1,0])) : lambda : Iw(0x2D),        # write gain pot
-    bytes(bytearray([1,1])) : lambda : Iw(0x2C),        # write width pot
-    bytes(bytearray([2,0])) : ADCp,                     # ADC polling - LEGACY
+    bytes(bytearray([1,1])) : lambda : Iw(0x2C),        # write threshold pot
     bytes(bytearray([2,1])) : ADCi,                     # ADC interrupts
+
     bytes(bytearray([4,0])) : lambda : polarpin.value(0),       # Negative polarity
     bytes(bytearray([4,1])) : lambda : polarpin.value(1),       # Positive polarity
-    bytes(bytearray([5,0])) : calibrate,           # Test 0x2D voltage/resistance linearity 
+
+    bytes(bytearray([5,0])) : calibrate,           # measure detector/apic gain profile 
+    bytes(bytearray([5,1])) : rateaq,              # measure sample rate
+
     bytes(bytearray([6,0])) : lambda: testpulsepin.value(0),    # disable test pulses
     bytes(bytearray([6,1])) : lambda: testpulsepin.value(1)     # enable test pulses
 }
