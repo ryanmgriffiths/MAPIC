@@ -138,6 +138,7 @@ def calibrate():
     fig.savefig('calibration.png')
 
 def rateaq():
+    apic.drain_socket()
     rate = apic.rateaq()
     errorbox.config(text=str(rate))
 

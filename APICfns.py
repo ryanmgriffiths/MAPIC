@@ -53,7 +53,7 @@ class APIC:
 
     def scanI2C(self):
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.'''
-        self.sendcmd((0,2))
+        self.sendcmd(0,2)
         addresses = list(self.sock.recv(2))     # Recieve a list of 2 I2C addresses in list of 8 bit nums
         self.I2Caddrs = addresses
     
@@ -88,8 +88,10 @@ class APIC:
         return adc_counts*(3300/4096)
     
     def rateaq(self):
+        self.sock.settimeout(10)
         self.sendcmd(5,1)
-        rate = int.from_bytes(self.sock.recv(4),'little',signed=False)
+        rateinb = self.sock.recv(4)
+        rate = int.from_bytes(rateinb,'little',signed=False)
         return rate
 
     def calibration(self):

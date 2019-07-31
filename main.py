@@ -35,7 +35,7 @@ pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
 pin_mode.value(0)                       # enable manual pulse clearing (i.e. pin -> high)
 clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
 polarpin = Pin('X6', Pin.OUT)           # define pin that chooses polarity   
-testpulsepin = Pin('X1',Pin.OUT)        # pin to enable internal test pulses on APIC
+#testpulsepin = Pin('X1',Pin.OUT)        # pin to enable internal test pulses on APIC ### NOT ENABLED YET
 polarpin.value(0)                       # set to 1 to achieve positive polarity
 
 # DATA STORAGE AND COUNTERS
@@ -44,6 +44,7 @@ calibdata = array('H',[0]*4)    # buffer to store ADC data from calibadc
 tim = bytearray(4)              # bytearray for microsecond, 4 byte timestamps
 t0=0                            # time at the beginning of the experiment
 count=0                         # counter for pulses read
+ratecounter = 0
 
 # SET UP WIRELESS ACCESS POINT
 wl_ap = network.WLAN(1)                 # init wlan object
@@ -89,15 +90,16 @@ def Is():
     conn.send(scan)
     return None
 
+
 ### CALIBRATION CURVE CODE ###
 
 def calibrate():
+    global calibint
+    calibint.enable()
     clearpin.value(1)
     clearpin.value(0)
-    extint = ExtInt('X2',ExtInt.IRQ_RISING,
-        pyb.Pin.PULL_NONE,cbcal)
     utime.sleep(10)
-    extint.disable()
+    calibint.disable()
 
 def cbcal(line):
     adc.read_timed(data,t2)
@@ -108,20 +110,27 @@ def cbcal(line):
 
 ### SOURCE RATE COUNTER ###
 def rateaq():
+    print('started')
+    clearpin.value(1)               # perform pulse clearing
+    clearpin.value(0)
     global ratecounter
+    global rateint
     ratecounter=0
     a=utime.ticks_ms()
-    rateint = ExtInt('X2',ExtInt.IRQ_RISING,pyb.Pin.PULL_NONE,ratecount)
-    pyb.delay(3000)
+    rateint.enable()
+    utime.sleep(3)
     rateint.disable()
     b = utime.ticks_ms()-a
-    finalrate = round((ratecounter/(b*1000))).to_bytes(4,
-        'little',False)
-    conn.send(finalrate)
+    finalrate = round((ratecounter/(b/1000)))
+    finalratebyte = finalrate.to_bytes(4,'little',False)
+    conn.send(finalratebyte)
 
 def ratecount(line):
     global ratecounter
-    ratecounter = ratecounter+1
+    ratecounter+=1
+    clearpin.value(1)               # perform pulse clearing
+    clearpin.value(0)
+    print(ratecounter)
 
 ### ADC INTERRUPT MEASUREMENT CODE ###
 
@@ -130,6 +139,7 @@ def ADCi():
     a=utime.ticks_ms()
     clearpin.value(1)
     clearpin.value(0)
+    global extint
     global count
     count = 0
     mnum = int.from_bytes(conn.recv(8),'little')
@@ -161,10 +171,22 @@ def callback(arg):
 def cb(line):
     micropython.schedule(callback,'a')
 
+# ENABLE INTERRUPT CHANNELS
+irqstate=pyb.disable_irq()                  # disable all interrupts during initialisation
+calibint = ExtInt('X1',ExtInt.IRQ_RISING,
+    pyb.Pin.PULL_NONE,cbcal)                # calibration routine interrupts on pin X1
+extint = ExtInt('X2',ExtInt.IRQ_RISING,
+    pyb.Pin.PULL_NONE,cb)                   # interrupts for ADC pulse DAQ on pin X2
+rateint = ExtInt('X4',ExtInt.IRQ_RISING,
+    pyb.Pin.PULL_NONE,ratecount)            # interrupts to measure sample activity on pin X4
+
+# disable each individually using extint for later enabling in the functions
+extint.disable()
+calibint.disable()
+rateint.disable()
+pyb.enable_irq(irqstate) # re-enable irqs
 
 #irq = Pin('X2').irq(handler=cb,trigger=Pin.IRQ_RISING,priority=10, wake=None, hard=True)
-extint = ExtInt('X2',ExtInt.IRQ_RISING,pyb.Pin.PULL_NONE,cb)     # init hardware irq on pin X1, rising edge and executes function callback
-extint.disable()
 # COMMAND CODES: bytearrays that the main program uses to execute functions above/simple
 # functions that are defined in the dict
 commands = {
