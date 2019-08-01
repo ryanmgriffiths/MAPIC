@@ -1,0 +1,3 @@
+constants = {
+    'defaulttimeout' : 10,
+}
