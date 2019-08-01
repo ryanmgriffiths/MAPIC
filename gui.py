@@ -100,15 +100,14 @@ def ADCi():
     bar1 = FigureCanvasTkAgg(histogram, root)
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
     apic.drain_socket()                     # drain socket to clear interrupt overflows
-    apic.sock.settimeout(default_timeout)   # reset timeout to normal
-
+    
 ADCil = Label(ADCframe, text='Interrupt Samples:')
 ADCil.grid(row=1,column=1)
 
 ADCie = Entry(ADCframe,textvariable=numadc)
 ADCie.grid(row=1,column=2)
 
-ADCout = Button(ADCframe, command=ADCi,text='Start',state=DISABLED)
+ADCout = Button(ADCframe, command=ADCi,text='Start')#,state=DISABLED)
 ADCout.grid(row=1,column=3)
 
 def pselect():
@@ -144,7 +143,7 @@ def calibrate():
     # Set apic objects for the gain/offset of the fit
     apic.gradient = b
     apic.offset = c
-    ADCout.config(state=NORMAL)
+#    ADCout.config(state=NORMAL)
 
 def rateaq():
     apic.drain_socket()

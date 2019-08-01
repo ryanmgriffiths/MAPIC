@@ -18,7 +18,7 @@ class APIC:
         self.sock = socket.socket(socket.AF_INET
             ,socket.SOCK_STREAM)            # init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
         self.sock.settimeout(tout)          # set socket timeout setting
-        #self.sock.connect(ipv4)             # Init connection to the socket.
+        self.sock.connect(ipv4)             # Init connection to the socket.
         self.samples=100
         
         # SET FILE NUMBERS FOR DATA SAVING
@@ -44,14 +44,15 @@ class APIC:
     
     def drain_socket(self):
         '''Empty socket of any interrupt overflow data, call after every instance of interrupt usage.\n
-        Warning: Reset timeout to default timeout after each call.'''
+        Reset timeout to 10s after each call.'''
         self.sock.settimeout(0)     # set timeout 0
         while True:
             try:
                 self.sock.recv(2)   # read 2 byte chunks until none left -> timeout
             except:
                 break               # when sock.recv timeout break loop
-        
+        self.sock.settimeout(10)
+
     def sendcmd(self,a,b):
         '''Send a bytearray command using two 8 bit unsigned integers a,b.\n
         self.sendcmd(a,b)\n
@@ -76,6 +77,7 @@ class APIC:
         self.sendcmd(0,0)
         self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive + update gain position variable
         self.posWIDTH = int.from_bytes(self.sock.recv(1),'little')          # receive + update threhold position variable
+    
     def writeI2C(self,pos,pot):
         '''Writes 8 bit values to one the two digital potentiometers.\n 
         self.writeI2C(pos,pot)\n 
