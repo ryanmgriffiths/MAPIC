@@ -5,6 +5,8 @@ import socket       # Low level networking module
 import datetime     # for measuring rates
 import numpy
 import os           # OS implementation for file saving
+from tkinter import *
+import tkinter.ttk as ttk
 
 class APIC:
     '''Class representing the APIC. Methods invoke measurement and information 
@@ -18,7 +20,7 @@ class APIC:
         self.sock.settimeout(tout)          # Socket timeout.
         self.sock.connect(ipv4)             # Init connection to the socket.
         #self.ser = serial.Serial(address,115200,timeout=tout)          # Connect to the serial port & init serial obj.
-
+        self.samples=100
         # SET FILE NUMBERS FOR DATA SAVING
         self.raw_dat_count = 0              #  counter for the number of raw data files
     
@@ -121,12 +123,14 @@ class APIC:
         self.outputpulses = self.mV(numpy.array(self.outputpulses))
         self.inputpulses = self.mV(numpy.array(self.inputpulses))
 
-    def ADCi(self,datpts):
+    def ADCi(self,datpts,progbar,rootwin):
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples , 
         returns arrays of 1) 8 samples of peaks in ADC counts and times at the end of each peak in microseconds 
         from the start of the experiment.'''
-
-        readm = bytearray(8)               # Bytearray for receiving ADC data (with no mem allocation)
+        self.samples = datpts               # update samples item
+        progbar['maximum'] = datpts
+        rootwin.update_idletasks()
+        readm = bytearray(8)                # Bytearray for receiving ADC data (with no mem allocation)
         #logtimem = bytearray(4)            # Bytearray to receive times
 
         self.data = numpy.zeros((datpts,4),dtype='uint16')           # ADC values numpy array
@@ -134,15 +138,15 @@ class APIC:
         datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
         self.sendcmd(2,1)                                       # Send byte command
         self.sock.send(datptsb)                                 # send num if data points to sample
-        
+
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
         for x in range(datpts):
             self.sock.recv_into(readm)
             self.data[x,:] = numpy.frombuffer(readm,dtype='uint16')
-                
+            progbar['value'] = x
+            rootwin.update_idletasks()
             #self.sock.recv_into(logtimem,4)
             #times[x] = int.from_bytes(logtimem,'little')
-
         # Save and return the arrays.
         numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',self.data)
         #numpy.savetxt('timeirq.txt',times)

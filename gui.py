@@ -68,20 +68,25 @@ W1S = Scale(I2Cframe,orient=HORIZONTAL,tickinterval=32,resolution=1,
 W1S.grid(row=3,column=5,rowspan=2)
 
 ### ADC Control Frame ###
+
+progress = ttk.Progressbar(ADCframe,value=0,maximum=apic.samples)
+progress.grid(row=2,column=1)
+
+
 numadc=StringVar()
 
 def ADCi():
-
+    progress['value'] = 0
     datapoints = int(numadc.get())          # get desired number of samples from the tkinter text entry
-    apic.ADCi(datapoints)                   # take data using ADCi protocol
+    apic.ADCi(datapoints,progress,root)                   # take data using ADCi protocol
     adcidata = apic.data
     histogram = plt.Figure(dpi=100)
     global ax1                              # allow changes to ax1 outside of ADCi()
     ax1 = histogram.add_subplot(111)
     hdat = numpy.average(adcidata,axis=1)   # average the ADC peak data over the columns
-    #hdat = hdat[hdat!=0]                   # remove zeros
+    hdat = hdat[hdat>0]                   # remove zeros
     #hdat = apic.ps_correction(hdat)        # correct to a voltage
-    ax1.hist(hdat,256,(100,4000),color='b',edgecolor='black')
+    ax1.hist(hdat,256,color='b',edgecolor='black')
     ax1.set_title('Energy Spectrum')
     ax1.set_xlabel('ADC Count')
     ax1.set_ylabel('Counts')
@@ -150,8 +155,6 @@ ratebutton = Button(diagnostic,text='Rate'
     ,command = rateaq)
 ratebutton.grid(row=3,column=1)
 
-progress = ttk.Progressbar(ADCframe,value=0,maximum=100)
-progress.grid(row=2,column=1)
 
 ### TOP MENU BAR ###
 menubar = Menu(root)

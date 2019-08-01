@@ -12,8 +12,8 @@ from pyb import USB_VCP
 from pyb import I2C
 from pyb import ADC
 from pyb import DAC
-from array import array
 from pyb import LED
+from array import array
 micropython.alloc_emergency_exception_buf(100) # For interrupt debugging
 
 # OBJECT DEFINITIONS
@@ -95,9 +95,9 @@ def Is():
 
 def calibrate():
     global calibint
-    calibint.enable()
     clearpin.value(1)
     clearpin.value(0)
+    calibint.enable()
     utime.sleep(10)
     calibint.disable()
 
@@ -106,7 +106,8 @@ def cbcal(line):
     conn.send(calibdata)
     clearpin.value(1)
     clearpin.value(0)
-    calibadc.read_timed(calibdata)
+    calibadc.read_timed(calibdata,t2)
+    conn.send(calibdata)
 
 ### SOURCE RATE COUNTER ###
 def rateaq():
@@ -130,7 +131,6 @@ def ratecount(line):
     ratecounter+=1
     clearpin.value(1)               # perform pulse clearing
     clearpin.value(0)
-    print(ratecounter)
 
 ### ADC INTERRUPT MEASUREMENT CODE ###
 
@@ -148,7 +148,6 @@ def ADCi():
     while count < mnum:
         pass
     extint.disable()
-    extint = None
     b = utime.ticks_ms()-a
     print(mnum/(b/1000))
 
