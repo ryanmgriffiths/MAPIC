@@ -1,2 +1,3 @@
 histdata/
 APICfns.cpython-37.pyc
+elf.ser = serial.Serial(address,115200,timeout=tout)          # Connect to the serial port & init serial obj.
