@@ -18,7 +18,7 @@ class APIC:
         self.sock = socket.socket(socket.AF_INET
             ,socket.SOCK_STREAM)            # Init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
         self.sock.settimeout(tout)          # Socket timeout.
-        self.sock.connect(ipv4)             # Init connection to the socket.
+        #self.sock.connect(ipv4)             # Init connection to the socket.
         #self.ser = serial.Serial(address,115200,timeout=tout)          # Connect to the serial port & init serial obj.
         self.samples=100
         # SET FILE NUMBERS FOR DATA SAVING

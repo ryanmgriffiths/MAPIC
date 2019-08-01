@@ -14,18 +14,21 @@ apic = F.APIC('COM3',default_timeout,('192.168.4.1',8080)) # connect to the APIC
 
 ### SETUP ###
 root = Tk()
-root.title('APIC')
+root.title('WAQ System')
 #root.wm_iconbitmap('dAPIC.bmp')
 
 ### DEFINE FRAMES ###
 I2Cframe = LabelFrame(root,text='I2C Digital Potentiometer Control')
 I2Cframe.grid(row=1,column=1,columnspan=6,rowspan=4)
 
-ADCframe = LabelFrame(root,text='Measurement Tools')
-ADCframe.grid(row=5,column=1,columnspan=5,rowspan=3,sticky=W)
+ADCframe = LabelFrame(root,text='DAQ')
+ADCframe.grid(row=5,column=1,columnspan=3,rowspan=3,sticky=W)
 
 diagnostic = LabelFrame(root,text='Diagnostic Message:')
-diagnostic.grid(row=6,column=6,rowspan=3)
+diagnostic.grid(row=8,column=1,rowspan=3)
+
+polarityframe = LabelFrame(root,text='Polarity Switch.')
+polarityframe.grid(row=6,column=4,rowspan=2)
 
 ### I2C TOOLS FRAME ###
 
@@ -70,8 +73,8 @@ W1S.grid(row=3,column=5,rowspan=2)
 
 ### ADC Control Frame ###
 
-progress = ttk.Progressbar(ADCframe,value=0,maximum=apic.samples) # add a progress bar
-progress.grid(row=2,column=1)
+progress = ttk.Progressbar(ADCframe,value=0,maximum=apic.samples,length=300) # add a progress bar
+progress.grid(row=2,column=1,columnspan=3)
 
 
 numadc=StringVar()
@@ -83,7 +86,7 @@ def ADCi():
     adcidata = apic.data
     histogram = plt.Figure(dpi=100)
     global ax1                              # allow changes to ax1 outside of ADCi()
-    ax1 = histogram.add_subplot(111)
+    ax1 = histogram.add_subplot(121)
     hdat = numpy.average(adcidata,axis=1)   # average the ADC peak data over the columns
     hdat = hdat[hdat>0]                     # remove zeros
     #hdat = apic.ps_correction(hdat)        # correct to a voltage
@@ -112,17 +115,12 @@ def pselect():
     apic.polarity(polarity=POL.get())
 
 POL = IntVar()
-    
-divide = Label(ADCframe,text='Polarity:').grid(row=1,column=5)
 
 # CHANGE CIRCUIT POLARITY
-ppolarity = Radiobutton(ADCframe,command=pselect,text='Positive',value=1,variable=POL)
+ppolarity = Radiobutton(polarityframe,command=pselect,text='Positive',value=1,variable=POL)
 ppolarity.grid(row=2,column=5,sticky=W)
-npolarity = Radiobutton(ADCframe,command=pselect,text='Negative',value=0,variable=POL)
+npolarity = Radiobutton(polarityframe,command=pselect,text='Negative',value=0,variable=POL)
 npolarity.grid(row=3,column=5,sticky=W)
-
-divide1 = Label(ADCframe,text='                   ').grid(row=1,
-    column=4,rowspan=6)
 
 ### DIAGNOSTIC FRAME ###
 errorbox = Message(diagnostic,text='Error messages.',
@@ -138,7 +136,7 @@ def calibrate():
     a,b,c = cf1
     fig = plt.figure()
     global ax2
-    ax2 = fig.add_subplot(111)
+    ax2 = fig.add_subplot(122)
     ax2.plot(apic.inputpulses,apic.outputpulses,label='raw data')
     ax2.plot(apic.inputpulses,f(apic.inputpulses,a,b,c),label='y=%fx^2 + %fx + %fc' % (a,b,c),linestyle='--')
     ax2.legend()
@@ -168,7 +166,6 @@ filemenu.add_command(label="Connect")
 filemenu.add_command(label="IP info")
 filemenu.add_command(label="Disconnect")
 filemenu.add_separator()
-filemenu.add_command(label="Exit", command=root.quit)
 menubar.add_cascade(label="Connection", menu=filemenu)
 
 helpmenu = Menu(menubar, tearoff=0)
