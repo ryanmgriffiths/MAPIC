@@ -23,7 +23,7 @@ class APIC:
         
         # SET FILE NUMBERS FOR DATA SAVING
         self.raw_dat_count = 0              #  counter for the number of raw data files
-        self.gradient = 0
+        self.gradient = 1
         self.offset = 0
         
         # Find the number of relevant files currently in the data directory, select file version number.
@@ -37,9 +37,9 @@ class APIC:
 
     def createfileno(self,fncount):
         '''A function that is used to create the 4 digit file number endings based on latest version'''
-        fncount=str(fncount)                        # int fncount to string 
+        fncount=str(fncount)                        # int fncount to string
         fnstring = list('0000')                     # convert to mutable list
-        fnstring[-len(fncount):] = list(fncount)    # replace last x terms with new version        
+        fnstring[-len(fncount):] = list(fncount)    # replace last x terms with new version
         return ''.join(fnstring)
     
     def drain_socket(self):
@@ -158,6 +158,7 @@ class APIC:
         self.data = numpy.zeros((datpts,4),dtype='uint16')      # ADC values numpy array
         #times = numpy.zeros(datpts,dtype='uint32')             # End of peak timestamps array
         datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
+        percent = datpts/100
         self.sendcmd(2,1)                                       # Send byte command
         self.sock.send(datptsb)                                     # send num if data points to sample
 
@@ -165,8 +166,9 @@ class APIC:
         for x in range(datpts):
             self.sock.recv_into(readm)
             self.data[x,:] = numpy.frombuffer(readm,dtype='uint16')
-            progbar['value'] = x                                # update the progress bar value
-            rootwin.update_idletasks()                          # force tkinter to update - non-ideal solution
+            if x%percent==0:
+                progbar['value'] = x                                # update the progress bar value
+                rootwin.update()                          # force tkinter to update - non-ideal solution
             #self.sock.recv_into(logtimem,4)
             #times[x] = int.from_bytes(logtimem,'little')
         
