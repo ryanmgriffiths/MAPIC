@@ -99,7 +99,7 @@ class APIC:
         return adc_counts*(3300/4096)
     
     def curvecorrect(self, Input):
-        return (Input/self.gradient) + self.offset
+        return ((Input + self.offset)/self.gradient)
 
     def rateaq(self):
         '''Acquire measured sample activity in Bq, does not work for activities lower than 1Bq.'''
