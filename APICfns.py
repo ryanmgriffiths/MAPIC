@@ -11,25 +11,29 @@ import tkinter.ttk as ttk
 class APIC:
     '''Class representing the APIC. Methods invoke measurement and information 
     requests to the board and manage communication over the network socket. I.e. control the board from the PC with this class.'''
-    def __init__(self,address,tout,ipv4):   # Intialise connection variables.
-        self.tout = tout                    # Timeout for both serial and socket connections in seconds.
+    def __init__(self,address,tout,ipv4):   # intialise connection variables.
+        self.tout = tout                    # timeout for both serial and socket connections in seconds.
         self.address = address              # COM port/or dev/tty OS dependent.
-        self.ipv4 = ipv4                    # Tuple of IP string and port e.g. ('123.456.78.9',1234) (see readme & socket)
+        self.ipv4 = ipv4                    # tuple of IP string and port e.g. ('123.456.78.9',1234) (see readme & socket)
         self.sock = socket.socket(socket.AF_INET
-            ,socket.SOCK_STREAM)            # Init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
-        self.sock.settimeout(tout)          # Socket timeout.
+            ,socket.SOCK_STREAM)            # init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
+        self.sock.settimeout(tout)          # set socket timeout setting
         #self.sock.connect(ipv4)             # Init connection to the socket.
-        #self.ser = serial.Serial(address,115200,timeout=tout)          # Connect to the serial port & init serial obj.
         self.samples=100
+        
         # SET FILE NUMBERS FOR DATA SAVING
         self.raw_dat_count = 0              #  counter for the number of raw data files
-    
+        self.gradient = 0
+        self.offset = 0
+        
         # Find the number of relevant files currently in the data directory, select file version number.
         for datafile in os.listdir('histdata'):
             if datafile.startswith('datairq'):
                 self.raw_dat_count+=1
             else:
                 pass
+        
+        #self.ser = serial.Serial(address,115200,timeout=tout)          # connect to the serial port & init serial obj.
 
     def createfileno(self,fncount):
         '''A function that is used to create the 4 digit file number endings based on latest version'''
@@ -60,7 +64,7 @@ class APIC:
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.\n
         Takes no arguments but stores received addresses as a list object self.I2Caddrs.'''
         self.sendcmd(0,2)
-        addresses = list(self.sock.recv(2))     # Recieve a list of 2 I2C addresses in list of 8 bit nums
+        addresses = list(self.sock.recv(2))     # recieve a list of 2 I2C addresses in list of 8 bit nums
         self.I2Caddrs = addresses
     
     def connect(self):
@@ -69,10 +73,9 @@ class APIC:
 
     def readI2C(self):
         '''Read the two I2C digital potentiometers. \n Creates two APIC variables self.posGAIN, self.posWIDTH storing the positions.'''
-        self.sendcmd(0,0)                                                   # Send byte command.
-        self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive gain position
-        self.posWIDTH = int.from_bytes(self.sock.recv(1),'little')          # receive width position
-
+        self.sendcmd(0,0)
+        self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive + update gain position variable
+        self.posWIDTH = int.from_bytes(self.sock.recv(1),'little')          # receive + update threhold position variable
     def writeI2C(self,pos,pot):
         '''Writes 8 bit values to one the two digital potentiometers.\n 
         self.writeI2C(pos,pot)\n 
@@ -95,6 +98,9 @@ class APIC:
         '''Convert ADC counts to millivolts, takes ADC count data array ot single value.'''
         return adc_counts*(3300/4096)
     
+    def curvecorrect(self, Input):
+        return (Input/self.gradient) + self.offset
+
     def rateaq(self):
         '''Acquire measured sample activity in Bq, does not work for activities lower than 1Bq.'''
         self.sock.settimeout(10)
@@ -161,6 +167,9 @@ class APIC:
             rootwin.update_idletasks()                          # force tkinter to update - non-ideal solution
             #self.sock.recv_into(logtimem,4)
             #times[x] = int.from_bytes(logtimem,'little')
+        
         # Save and return the arrays.
+        self.data = self.mV(self.data)                          # convert to millivolts
+        self.data = self.curvecorrect(self.data)                # apply linear fit corrections
         numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',self.data)
         #numpy.savetxt('timeirq.txt',times)

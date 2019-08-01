@@ -24,11 +24,11 @@ I2Cframe.grid(row=1,column=1,columnspan=6,rowspan=4)
 ADCframe = LabelFrame(root,text='DAQ')
 ADCframe.grid(row=5,column=1,columnspan=3,rowspan=3,sticky=W)
 
-diagnostic = LabelFrame(root,text='Diagnostic Message:')
-diagnostic.grid(row=8,column=1,rowspan=3)
+diagnostic = LabelFrame(root,text='Calibration Tools')
+diagnostic.grid(row=5,column=5,rowspan=2,columnspan=2)
 
 polarityframe = LabelFrame(root,text='Polarity Switch.')
-polarityframe.grid(row=6,column=4,rowspan=2)
+polarityframe.grid(row=5,column=4,rowspan=2)
 
 ### I2C TOOLS FRAME ###
 
@@ -108,7 +108,7 @@ ADCil.grid(row=1,column=1)
 ADCie = Entry(ADCframe,textvariable=numadc)
 ADCie.grid(row=1,column=2)
 
-ADCout = Button(ADCframe, command=ADCi,text='Start')
+ADCout = Button(ADCframe, command=ADCi,text='Start',state=DISABLED)
 ADCout.grid(row=1,column=3)
 
 def pselect():
@@ -123,9 +123,9 @@ npolarity = Radiobutton(polarityframe,command=pselect,text='Negative',value=0,va
 npolarity.grid(row=3,column=5,sticky=W)
 
 ### DIAGNOSTIC FRAME ###
-errorbox = Message(diagnostic,text='Error messages.',
+errorbox = Message(root,text='Error messages.',
     bg='white',relief=RIDGE,width=220)
-errorbox.grid(row=1,column=1)
+errorbox.grid(row=10,column=1,columnspan=6)
 
 def f(x,a,b,c):
     return a*x**2 + b*x + c
@@ -141,6 +141,10 @@ def calibrate():
     ax2.plot(apic.inputpulses,f(apic.inputpulses,a,b,c),label='y=%fx^2 + %fx + %fc' % (a,b,c),linestyle='--')
     ax2.legend()
     fig.savefig('calibration.png')
+    # Set apic objects for the gain/offset of the fit
+    apic.gradient = b
+    apic.offset = c
+    ADCout.config(state=NORMAL)
 
 def rateaq():
     apic.drain_socket()
@@ -150,11 +154,11 @@ def rateaq():
 
 calibration = Button(diagnostic,text='Gain Calibration',
     command=calibrate)
-calibration.grid(row=2,column=1)
+calibration.grid(row=2,column=1,sticky=W)
 
 ratebutton = Button(diagnostic,text='Rate'
     ,command = rateaq)
-ratebutton.grid(row=3,column=1)
+ratebutton.grid(row=3,column=1,sticky=W)
 
 
 ### TOP MENU BAR ###
