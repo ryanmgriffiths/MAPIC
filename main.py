@@ -103,7 +103,7 @@ def calibrate():
 
 def cbcal(line):
     adc.read_timed(data,t2)
-    conn.send(calibdata)
+    conn.send(data)
     clearpin.value(1)
     clearpin.value(0)
     calibadc.read_timed(calibdata,t2)
