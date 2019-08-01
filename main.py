@@ -179,15 +179,16 @@ extint = ExtInt('X2',ExtInt.IRQ_RISING,
 rateint = ExtInt('X4',ExtInt.IRQ_RISING,
     pyb.Pin.PULL_NONE,ratecount)            # interrupts to measure sample activity on pin X4
 
+#irq = Pin('X2').irq(handler=cb,trigger=Pin.IRQ_RISING,priority=10, wake=None, hard=True)
+
 # disable each individually using extint for later enabling in the functions
 extint.disable()
 calibint.disable()
 rateint.disable()
 pyb.enable_irq(irqstate) # re-enable irqs
 
-#irq = Pin('X2').irq(handler=cb,trigger=Pin.IRQ_RISING,priority=10, wake=None, hard=True)
-# COMMAND CODES: bytearrays that the main program uses to execute functions above/simple
-# functions that are defined in the dict
+'''COMMAND CODES: bytearrays that the main program uses to execute functions above/simple
+    functions that are defined in the dict'''
 commands = {
 # bytes(bytearray([])) : ,
     bytes(bytearray([0,0])) : Ir,    # read first gain potentiometer, then threshold

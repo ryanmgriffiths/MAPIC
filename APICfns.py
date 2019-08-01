@@ -39,22 +39,26 @@ class APIC:
         return ''.join(fnstring)
     
     def drain_socket(self):
-        '''Empty socket of any interrupt overflow data, call after every instance of interrupt usage.'''
-        self.sock.settimeout(0)
+        '''Empty socket of any interrupt overflow data, call after every instance of interrupt usage.\n
+        Warning: Reset timeout to default timeout after each call.'''
+        self.sock.settimeout(0)     # set timeout 0
         while True:
             try:
-                self.sock.recv(2)
+                self.sock.recv(2)   # read 2 byte chunks until none left -> timeout
             except:
-                break
-    
+                break               # when sock.recv timeout break loop
+        
     def sendcmd(self,a,b):
-        '''Send a bytearray command using two of 8 bit unisnged integers.\n
-        a is the first command byte for type of command \n
-        b is second command byte for subsection.'''
+        '''Send a bytearray command using two 8 bit unsigned integers a,b.\n
+        self.sendcmd(a,b)\n
+        Arguments:\n
+        \t a: first command byte for type of command \n
+        \t b: second command byte for subsection.'''
         self.sock.send(bytearray([a,b]))
 
     def scanI2C(self):
-        '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.'''
+        '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.\n
+        Takes no arguments but stores received addresses as a list object self.I2Caddrs.'''
         self.sendcmd(0,2)
         addresses = list(self.sock.recv(2))     # Recieve a list of 2 I2C addresses in list of 8 bit nums
         self.I2Caddrs = addresses
@@ -64,15 +68,17 @@ class APIC:
         self.sock.connect(self.ipv4)
 
     def readI2C(self):
-        '''Read the two I2C digital potentiometers. Creates apic items posGAIN and posWIDTH which store the potentiometer 
-        positions.'''
+        '''Read the two I2C digital potentiometers. \n Creates two APIC variables self.posGAIN, self.posWIDTH storing the positions.'''
         self.sendcmd(0,0)                                                   # Send byte command.
         self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive gain position
         self.posWIDTH = int.from_bytes(self.sock.recv(1),'little')          # receive width position
 
     def writeI2C(self,pos,pot):
-        '''Writes 8 bit values to one the two digital potentiometers. One argument pot dictates which potentiometer to
-        write to, the conversion of the byte command is done on the board and an actual hex address is assigned there.'''
+        '''Writes 8 bit values to one the two digital potentiometers.\n 
+        self.writeI2C(pos,pot)\n 
+        Arguments:
+            \t pos: desired position of pot 8 bit value
+            \t pot: takes value 0,1 for threshold and gain pots respectively'''
         self.sendcmd(1,pot)
         self.sock.send(bytes([pos]))          # Convert desired pot value to bytes and send.
 
@@ -83,18 +89,26 @@ class APIC:
 
     def polarity(self,polarity=1):
         '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
-        self.sendcmd(4,0)
+        self.sendcmd(4,polarity)
            
     def mV(self, adc_counts):
         '''Convert ADC counts to millivolts, takes ADC count data array ot single value.'''
         return adc_counts*(3300/4096)
     
     def rateaq(self):
+        '''Acquire measured sample activity in Bq, does not work for activities lower than 1Bq.'''
         self.sock.settimeout(10)
         self.sendcmd(5,1)
         rateinb = self.sock.recv(4)
         rate = int.from_bytes(rateinb,'little',signed=False)
         return rate
+    
+    def shapergain(self,shapeV):
+        '''Turns voltage data from the shaper and converts it into gains using the exponential fit.\n
+        self.shapergain(shapeV)\n
+        \t shapeV: voltage data (numpy array type) from the shaper.'''
+        shapergain = 0.0375*numpy.exp(4.4156*shapeV)
+        return shapergain
 
     def calibration(self):
         '''Perform a calibration of the setup, arbitrary time and creates two items of the APIC class
@@ -128,23 +142,23 @@ class APIC:
         returns arrays of 1) 8 samples of peaks in ADC counts and times at the end of each peak in microseconds 
         from the start of the experiment.'''
         self.samples = datpts               # update samples item
-        progbar['maximum'] = datpts
-        rootwin.update_idletasks()
+        progbar['maximum'] = datpts         # update progress bar max value
+        rootwin.update_idletasks()          # force tkinter to refresh
         readm = bytearray(8)                # Bytearray for receiving ADC data (with no mem allocation)
         #logtimem = bytearray(4)            # Bytearray to receive times
 
-        self.data = numpy.zeros((datpts,4),dtype='uint16')           # ADC values numpy array
+        self.data = numpy.zeros((datpts,4),dtype='uint16')      # ADC values numpy array
         #times = numpy.zeros(datpts,dtype='uint32')             # End of peak timestamps array
         datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
         self.sendcmd(2,1)                                       # Send byte command
-        self.sock.send(datptsb)                                 # send num if data points to sample
+        self.sock.send(datptsb)                                     # send num if data points to sample
 
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
         for x in range(datpts):
             self.sock.recv_into(readm)
             self.data[x,:] = numpy.frombuffer(readm,dtype='uint16')
-            progbar['value'] = x
-            rootwin.update_idletasks()
+            progbar['value'] = x                                # update the progress bar value
+            rootwin.update_idletasks()                          # force tkinter to update - non-ideal solution
             #self.sock.recv_into(logtimem,4)
             #times[x] = int.from_bytes(logtimem,'little')
         # Save and return the arrays.
