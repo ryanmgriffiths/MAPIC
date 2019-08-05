@@ -19,8 +19,12 @@ function to define a GPIO pin and send pulses
 obect/function to call in python with selectable GPIO pins/ADC pin, selectable 
 */
 
-// Define macros for ease of use.
 
+// ADD MORE HERE:
+
+
+
+/* Define macros with board pin names */
 #define X1              LL_GPIO_PIN_0       
 #define X2              LL_GPIO_PIN_1       
 #define X3              LL_GPIO_PIN_2       
@@ -30,9 +34,15 @@ obect/function to call in python with selectable GPIO pins/ADC pin, selectable
 #define X7              LL_GPIO_PIN_6       
 #define X8              LL_GPIO_PIN_7       
  
-// HAL LL FUNCTIONS
+// WATCHDOG CONFIGURATION ######################################################
 
-void Configure_ADC(void)
+#define ADC_AWD_THRESHOLD_HIGH           ((uint32_t)200)
+#define ADC_AWD_THRESHOLD_LOW            ((uint32_t)0)
+
+__IO   uint8_t ubAnalogWatchdog1Status = 0;
+
+// HAL LL FUNCTIONS ############################################################
+void Configure_ADC(void) 
 {
   /*## Configuration of GPIO used by ADC channels ############################*/
   
@@ -151,59 +161,24 @@ void Configure_ADC(void)
   
 }
 
-/**
-  * @brief  Perform ADC activation procedure to make it ready to convert
-  *         (ADC instance: ADC1).
-  * @note   Operations:
-  *         - ADC instance
-  *           - Enable ADC
-  *         - ADC group regular
-  *           none: ADC conversion start-stop to be performed
-  *                 after this function
-  *         - ADC group injected
-  *           none: ADC conversion start-stop to be performed
-  *                 after this function
-  * @param  None
-  * @retval None
-  */
-
 void Activate_ADC(void)
 {
   #if (USE_TIMEOUT == 1)
   uint32_t Timeout = 0; /* Variable used for timeout management */
   #endif /* USE_TIMEOUT */
   
-  /*## Operation on ADC hierarchical scope: ADC instance #####################*/
-  
-  /* Note: Hardware constraint (refer to description of the functions         */
-  /*       below):                                                            */
-  /*       On this STM32 serie, setting of these features are not             */
-  /*       conditioned to ADC state.                                          */
-  /*       However, in order to be compliant with other STM32 series          */
-  /*       and to show the best practice usages, ADC state is checked.        */
-  /*       Software can be optimized by removing some of these checks, if     */
-  /*       they are not relevant considering previous settings and actions    */
-  /*       in user application.                                               */
   if (LL_ADC_IsEnabled(ADC1) == 0)
   {
     /* Enable ADC */
-    LL_ADC_Enable(ADC1);
-    
+    LL_ADC_Enable(ADC1); 
   }
-  
   /*## Operation on ADC hierarchical scope: ADC group regular ################*/
   /* Note: No operation on ADC group regular performed here.                  */
   /*       ADC group regular conversions to be performed after this function  */
   /*       using function:                                                    */
   /*       "LL_ADC_REG_StartConversion();"                                    */
-  
 }
 
-/**
-  * @brief  Initialize LED1.
-  * @param  None
-  * @retval None
-  */
 void SystemClock_Config(void)
 {
   /* Enable HSE clock */
@@ -256,11 +231,6 @@ void SystemClock_Config(void)
   SystemCoreClock = 216000000;
 }
 
-/**
-  * @brief  CPU L1-Cache enable.
-  * @param  None
-  * @retval None
-  */
 static void CPU_CACHE_Enable(void)
 {
   /* Enable I-Cache */
@@ -269,14 +239,16 @@ static void CPU_CACHE_Enable(void)
   /* Enable D-Cache */
   SCB_EnableDCache();
 }
+ 
+// CUSTOMISED C FUNCTIONS ################################################################
 
-// C FUNCTIONS FOR LOCAL USE
-
-static void configure_clearpin_pulse(mp_hal_pin_obj_t pulse_pin){
+/* Config the pulsing pin */
+static void configure_clearpin_pulse(pin_obj_t pulse_pin){
     mp_hal_pin_config(pulse_pin,MP_HAL_PIN_MODE_INPUT,MP_HAL_PIN_PULL_NONE,0);
 }
 
-static void clearpin_pulse(mp_hal_pin_obj_t pulse_pin){
+/* Pulse GPIO pin for ~ 1us */
+static void clearpin_pulse(pin_ob_t pulse_pin){
     mp_hal_pin_high(pulse_pin);
     mp_hal_delay_us(1);
     mp_hal_pin_low(pulse_pin);
@@ -291,15 +263,33 @@ void AdcAnalogWatchdog1_Callback()
   ubAnalogWatchdog1Status = 1;
 
   /* Perform interrupt handling here */
+  clearpin_pulse();
 
+  /* Reset status variable of ADC analog watchdog 1 */
+  ubAnalogWatchdog1Status = 0;
+  
+  /* Clear flag ADC analog watchdog 1 */
+  LL_ADC_ClearFlag_AWD1(ADC1);
+  
+  /* Enable ADC analog watchdog 1 interruption */
+  LL_ADC_EnableIT_AWD1(ADC1);
 }
 
-// WATCHDOG CONFIGURATION
 
-#define ADC_AWD_THRESHOLD_HIGH           ((uint32_t)200)
-#define ADC_AWD_THRESHOLD_LOW            ((uint32_t)0)
+void ADC_IRQHandler(void)
+{
+  /* Check whether ADC analog watchdog 1 caused the ADC interruption */
+  if(LL_ADC_IsActiveFlag_AWD1(ADC1) != 0)
+  {
+    /* Clear flag ADC analog watchdog 1 */
+    LL_ADC_ClearFlag_AWD1(ADC1);
+    
+    /* Call interruption treatment function */
+    AdcAnalogWatchdog1_Callback();
+  }
+}
 
-__IO   uint8_t ubAnalogWatchdog1Status = 0;
+// MICROPYTHON WRAPPED FUNCTIONS/OBJECTS ################################################
 
 int main(void)
 {
@@ -314,34 +304,14 @@ int main(void)
   
   /* Initialize button in EXTI mode */
   UserButton_Init();
-  
-  /* Configure ADC */
-  /* Note: This function configures the ADC but does not enable it.           */
-  /*       To enable it, use function "Activate_ADC()".                       */
-  /*       This is intended to optimize power consumption:                    */
-  /*       1. ADC configuration can be done once at the beginning             */
-  /*          (ADC disabled, minimal power consumption)                       */
-  /*       2. ADC enable (higher power consumption) can be done just before   */
-  /*          ADC conversions needed.                                         */
-  /*          Then, possible to perform successive "Activate_ADC()",          */
-  /*          "Deactivate_ADC()", ..., without having to set again            */
-  /*          ADC configuration.                                              */
+
   Configure_ADC();
   
   /* Activate ADC */
   /* Perform ADC activation procedure to make it ready to convert. */
   Activate_ADC();
-  
-  /* Start ADC group regular conversion */
-  /* Note: Hardware constraint (refer to description of the functions         */
-  /*       below):                                                            */
-  /*       On this STM32 serie, setting of these features are not             */
-  /*       conditioned to ADC state.                                          */
-  /*       However, in order to be compliant with other STM32 series          */
-  /*       and to show the best practice usages, ADC state is checked.        */
-  /*       Software can be optimized by removing some of these checks, if     */
-  /*       they are not relevant considering previous settings and actions    */
-  /*       in user application.                                               */
+
+  /* Possibly unnecessary checks */
   if (LL_ADC_IsEnabled(ADC1) == 1)
   {
     LL_ADC_REG_StartConversionSWStart(ADC1);
@@ -349,12 +319,11 @@ int main(void)
   else
   {
     /* Error: ADC conversion start could not be performed */
-    LED_Blinking(LED_BLINK_ERROR);
+    ;
   }
 
 
-// MICROPYTHON IMPLEMENTATION
-
+// MICROPYTHON IMPLEMENTATION ###########################################
 
 
 STATIC const mp_map_elem_t adcwd_globals_table[] = {
