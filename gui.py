@@ -83,14 +83,12 @@ def ADCi():
     progress['value'] = 0
     datapoints = int(numadc.get())          # get desired number of samples from the tkinter text entry
     apic.ADCi(datapoints,progress,root)     # take data using ADCi protocol
-    adcidata = apic.data
+    adcidata = apic.mV(apic.data)
     histogram = plt.Figure(dpi=100)
     global ax1                              # allow changes to ax1 outside of ADCi()
     ax1 = histogram.add_subplot(121)
     hdat = numpy.average(adcidata,axis=1)   # average the ADC peak data over the columns
     hdat = hdat[hdat>0]                     # remove zeros
-    #hdat = apic.ps_correction(hdat)        # correct to a voltage
-    
     ax1.hist(hdat,256,color='b',edgecolor='black')
     ax1.set_title('Energy Spectrum')
     ax1.set_xlabel('ADC Count')
@@ -121,7 +119,7 @@ ppolarity.grid(row=2,column=5,sticky=W)
 npolarity = Radiobutton(polarityframe,command=pselect,text='Negative',value=0,variable=POL)
 npolarity.grid(row=3,column=5,sticky=W)
 
-### DIAGNOSTIC FRAME ###
+### CALIBRATION FRAME ###
 errorbox = Message(root,text='Error messages.',
     bg='white',relief=RIDGE,width=220)
 errorbox.grid(row=10,column=1,columnspan=6)
@@ -143,22 +141,30 @@ def calibrate():
     # Set apic objects for the gain/offset of the fit
     apic.gradient = b
     apic.offset = c
+    caliblabel.config(text='y=%sx^2+%sx+%s' % (str(a),str(b),str(c)))
+    apic.drain_socket()
+
 #    ADCout.config(state=NORMAL)
 
 def rateaq():
     apic.drain_socket()
     rate = apic.rateaq()
-    errorbox.config(text=str(rate))
+    ratelabel.config(text=str(rate)+'Hz')
     apic.drain_socket()
 
 calibration = Button(diagnostic,text='Gain Calibration',
     command=calibrate)
-calibration.grid(row=2,column=1,sticky=W)
+calibration.grid(row=1,column=1,sticky=W)
 
 ratebutton = Button(diagnostic,text='Rate'
     ,command = rateaq)
-ratebutton.grid(row=3,column=1,sticky=W)
+ratebutton.grid(row=2,column=1,sticky=W)
 
+ratelabel = Label(diagnostic,text='---')
+ratelabel.grid(row=2,column=2)
+
+caliblabel = Label(diagnostic,text='---')
+caliblabel.grid(row=1,column=2)
 
 ### TOP MENU BAR ###
 menubar = Menu(root)
