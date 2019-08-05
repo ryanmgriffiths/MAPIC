@@ -33,11 +33,17 @@ polarityframe.grid(row=5,column=4,rowspan=2)
 ### I2C TOOLS FRAME ###
 
 def read():
-    apic.readI2C()
-    Ireadlabel.config(text='Gain: %i , Width: %i' % (apic.posGAIN,apic.posWIDTH))
+    try:
+        apic.readI2C()
+        Ireadlabel.config(text='Gain: %i , Width: %i' % (apic.posGAIN,apic.posWIDTH))
+    except:
+        errorbox.config(text='Timeout')
 def scan():
-    apic.scanI2C()      
-    Iscanlabel.config(text=str(apic.I2Caddrs))
+    try:
+        apic.scanI2C()      
+        Iscanlabel.config(text=str(apic.I2Caddrs))
+    except:
+        errorbox.config(text='Timeout')
 
 Iread = Button(I2Cframe,text='Potentiometer Values',command=read).grid(row=1,column=1)
 Ireadlabel = Label(I2Cframe,text='---')
@@ -169,9 +175,12 @@ caliblabel.grid(row=1,column=2)
 ### TOP MENU BAR ###
 menubar = Menu(root)
 
+def connect():
+    apic.connect()
+
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
-filemenu.add_command(label="Connect")
+filemenu.add_command(label="Connect", command=connect)
 filemenu.add_command(label="IP info")
 filemenu.add_command(label="Disconnect")
 filemenu.add_separator()

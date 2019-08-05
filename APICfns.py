@@ -70,7 +70,13 @@ class APIC:
     
     def connect(self):
         '''Reconnect to the pyboard.'''
-        self.sock.connect(self.ipv4)
+        try:
+            self.sock.close()
+        except:
+            print('Socket already closed debug.')
+        self.sock = socket.socket(socket.AF_INET
+            ,socket.SOCK_STREAM)            # reinit socket object
+        self.sock.connect(self.ipv4)        # init reconnection
 
     def readI2C(self):
         '''Read the two I2C digital potentiometers. \n Creates two APIC variables self.posGAIN, self.posWIDTH storing the positions.'''

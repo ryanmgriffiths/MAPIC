@@ -33,9 +33,9 @@ adc = ADC(Pin('X12'))                   # define ADC pin for pulse stretcher mea
 calibadc = ADC(Pin('X3'))               # define ADC pin for measuring shaper voltage
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
 pin_mode.value(0)                       # enable manual pulse clearing (i.e. pin -> high)
-clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
+#clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
 polarpin = Pin('X6', Pin.OUT)           # define pin that chooses polarity   
-#testpulsepin = Pin('X1',Pin.OUT)        # pin to enable internal test pulses on APIC ### NOT ENABLED YET
+testpulsepin = Pin('X11',Pin.OUT)        # pin to enable internal test pulses on APIC ### NOT ENABLED YET
 polarpin.value(0)                       # set to 1 to achieve positive polarity
 
 # DATA STORAGE AND COUNTERS
@@ -95,8 +95,8 @@ def Is():
 
 def calibrate():
     global calibint
-    clearpin.value(1)
-    clearpin.value(0)
+    #clearpin.value(1)
+    #clearpin.value(0)
     calibint.enable()
     utime.sleep(10)
     calibint.disable()
@@ -104,16 +104,16 @@ def calibrate():
 def cbcal(line):
     adc.read_timed(data,t2)
     conn.send(data)
-    clearpin.value(1)
-    clearpin.value(0)
+    #clearpin.value(1)
+    #clearpin.value(0)
     calibadc.read_timed(calibdata,t2)
     conn.send(calibdata)
 
 ### SOURCE RATE COUNTER ###
 def rateaq():
     print('started')
-    clearpin.value(1)               # perform pulse clearing
-    clearpin.value(0)
+    #clearpin.value(1)               # perform pulse clearing
+    #clearpin.value(0)
     global ratecounter
     global rateint
     ratecounter=0
@@ -129,16 +129,15 @@ def rateaq():
 def ratecount(line):
     global ratecounter
     ratecounter+=1
-    clearpin.value(1)               # perform pulse clearing
-    clearpin.value(0)
+    #clearpin.value(1)               # perform pulse clearing
+    #clearpin.value(0)
 
 ### ADC INTERRUPT MEASUREMENT CODE ###
 
 # MAIN ADC MEASUREMENT CODE
 def ADCi():
-    a=utime.ticks_ms()
-    clearpin.value(1)
-    clearpin.value(0)
+#    clearpin.value(1)
+#    clearpin.value(0)
     global extint
     global count
     count = 0
@@ -148,8 +147,6 @@ def ADCi():
     while count < mnum:
         pass
     extint.disable()
-    b = utime.ticks_ms()-a
-    print(mnum/(b/1000))
 
 # ISR CALLBACK FUNCTION
 def callback(arg):
@@ -159,8 +156,8 @@ def callback(arg):
 #    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')     # timestamp the pulse
 #    conn.send(tim)                 # send timestamp over socket
     conn.send(data)                 # send adc sample over socket
-    clearpin.value(1)               # perform pulse clearing
-    clearpin.value(0)
+#    clearpin.value(1)               # perform pulse clearing
+ #   clearpin.value(0)
     count+=1                 # pulse counter
     pyb.enable_irq(irqstate)
 
@@ -209,6 +206,10 @@ commands = {
 }
 
 # MAIN PROGRAM LOOP
-while True:
-    mode = conn.recv(2)         # wait until the board receives the 2 byte command code, no timeout
-    commands[mode]()            # reference commands dictionary and run the corresponding function
+try:
+    while True:
+        mode = conn.recv(2)         # wait until the board receives the 2 byte command code, no timeout
+        commands[mode]()            # reference commands dictionary and run the corresponding function
+except:
+    print('Connection lost/broken.')
+    machine.reset()
