@@ -17,7 +17,7 @@ root = Tk()
 root.title('WAQ System')
 #root.wm_iconbitmap('dAPIC.bmp')
 
-### DEFINE FRAMES ###
+### DEFINE GUI FRAMES ###
 I2Cframe = LabelFrame(root,text='I2C Digital Potentiometer Control')
 I2Cframe.grid(row=1,column=1,columnspan=6,rowspan=4)
 
@@ -32,6 +32,7 @@ polarityframe.grid(row=5,column=4,rowspan=2)
 
 ### I2C TOOLS FRAME ###
 
+# See apic.readI2C and apic.I2C for explanation of functions.
 def read():
     try:
         apic.readI2C()
@@ -45,6 +46,7 @@ def scan():
     except:
         errorbox.config(text='Timeout')
 
+# Widget definitions and placement
 Iread = Button(I2Cframe,text='Potentiometer Values',command=read).grid(row=1,column=1)
 Ireadlabel = Label(I2Cframe,text='---')
 Ireadlabel.grid(row=2,column=1)
@@ -55,15 +57,15 @@ Iscanlabel.grid(row=4,column=1)
 
 divide = Label(I2Cframe,text='                ').grid(row=1,column=2,rowspan=6,columnspan=2)
 
-# WRITE 8 BIT VALUES TO POTENTIOMETERS
+# Define int variables for the widgets to reference
 var0 = IntVar()
 var1 = IntVar()
 
 def write0():
-    gain = var0.get()-1
-    apic.writeI2C(gain,0)
+    gain = var0.get()           # retrieve 8 bit int value from the position of the slider
+    apic.writeI2C(gain,0)       # call the write function with this value
 def write1():
-    width = var1.get()-1
+    width = var1.get()
     apic.writeI2C(width,1)
 
 # GAIN POT BUTTON
@@ -79,49 +81,60 @@ W1S.grid(row=3,column=5,rowspan=2)
 
 ### ADC Control Frame ###
 
-progress = ttk.Progressbar(ADCframe,value=0,maximum=apic.samples,length=300) # add a progress bar
-progress.grid(row=2,column=1,columnspan=3)
-
-
 numadc=StringVar()
 
 def ADCi():
-    progress['value'] = 0
+    progress['value'] = 0                   # reset progressbar
     datapoints = int(numadc.get())          # get desired number of samples from the tkinter text entry
     apic.ADCi(datapoints,progress,root)     # take data using ADCi protocol
     adcidata = apic.mV(apic.data)
+    
     histogram = plt.Figure(dpi=100)
     global ax1                              # allow changes to ax1 outside of ADCi()
     ax1 = histogram.add_subplot(111)
     hdat = numpy.average(adcidata,axis=1)   # average the ADC peak data over the columns
     hdat = hdat[hdat>0]                     # remove zeros
+    
+    # set titles and axis labels
     ax1.hist(hdat,256,color='b',edgecolor='black')
     ax1.set_title('Energy Spectrum')
     ax1.set_xlabel('APIC output (V)')
     ax1.set_ylabel('Counts')
+    
     #plt.savefig('histdata\histogram'+str(apic.raw_dat_count)+'.png')
-    apic.raw_dat_count+=1
-    bar1 = FigureCanvasTkAgg(histogram, root)
+    apic.raw_dat_count+=1                   # new file version number
+    
+    # add the plot to the gui
+    bar1 = FigureCanvasTkAgg(histogram, root)   
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
+    
     apic.drain_socket()                     # drain socket to clear interrupt overflows
     
-ADCil = Label(ADCframe, text='Interrupt Samples:')
-ADCil.grid(row=1,column=1)
 
-ADCie = Entry(ADCframe,textvariable=numadc)
-ADCie.grid(row=1,column=2)
+# Add ADC frame widgets
+ADCi_label = Label(ADCframe, text='Interrupt Samples:')
+ADCi_label.grid(row=1,column=1)
 
-ADCout = Button(ADCframe, command=ADCi,text='Start')#,state=DISABLED)
-ADCout.grid(row=1,column=3)
+ADCi_entry = Entry(ADCframe,textvariable=numadc)
+ADCi_entry.grid(row=1,column=2)
+
+ADC_out = Button(ADCframe, command=ADCi,text='Start')#,state=DISABLED)
+ADC_out.grid(row=1,column=3)
+
+progress = ttk.Progressbar(ADCframe,value=0,maximum=apic.samples,length=300) # add a progress bar
+progress.grid(row=2,column=1,columnspan=3)
+
+
+### POLARITY FRAME ###
+POL = IntVar()
 
 def pselect():
     apic.polarity(polarity=POL.get())
 
-POL = IntVar()
-
-# CHANGE CIRCUIT POLARITY
+# Add polarity widgets
 ppolarity = Radiobutton(polarityframe,command=pselect,text='Positive',value=1,variable=POL)
 ppolarity.grid(row=2,column=5,sticky=W)
+
 npolarity = Radiobutton(polarityframe,command=pselect,text='Negative',value=0,variable=POL)
 npolarity.grid(row=3,column=5,sticky=W)
 

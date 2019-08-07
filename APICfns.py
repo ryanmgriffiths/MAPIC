@@ -93,24 +93,22 @@ class APIC:
         self.sendcmd(1,pot)
         self.sock.send(bytes([pos]))          # Convert desired pot value to bytes and send.
 
-    ### NOT ENABLED YET ###
-    def testpulses(self,value):
-        '''Enable test pulses on APIC, value=1 is on, value=0 is off.'''
-        self.sendcmd(6,value)
-
     def polarity(self,polarity=1):
         '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
         self.sendcmd(4,polarity)
            
     def mV(self, adc_counts):
-        '''Convert ADC counts to millivolts, takes ADC count data array ot single value.'''
+        '''Convert ADC counts to millivolts. Returns converted data.\n
+        self.mV(adc_counts)\n
+        \t adc_counts: array or single value of adc counts to convert '''
         return adc_counts*(3300/4096)
     
     def curvecorrect(self, Input):
         return ((Input + self.offset)/self.gradient)
 
     def rateaq(self):
-        '''Acquire measured sample activity in Bq, does not work for activities lower than 1Bq.'''
+        '''Acquire measured sample activity in Bq, does not work for activities lower than 1Bq.\n
+        Returns the sample rate in Hz.'''
         self.sock.settimeout(10)
         self.sendcmd(5,1)
         rateinb = self.sock.recv(4)
@@ -118,7 +116,7 @@ class APIC:
         return rate
     
     def shapergain(self,shapeV):
-        '''Turns voltage data from the shaper and converts it into gains using the exponential fit.\n
+        '''Turns voltage data from the shaper and converts it into gains using the exponential fit. Returns the gain of the shaper.\n
         self.shapergain(shapeV)\n
         \t shapeV: voltage data (numpy array type) from the shaper.'''
         shapergain = 0.0375*numpy.exp(4.4156*shapeV)
@@ -154,7 +152,11 @@ class APIC:
     def ADCi(self,datpts,progbar,rootwin):
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples , 
         returns arrays of 1) 8 samples of peaks in ADC counts and times at the end of each peak in microseconds 
-        from the start of the experiment.'''
+        from the start of the experiment.\n
+        self.ADCi(datpts,progbar,rootwin)\n
+        \t datpts: 64bit number for desired number of ADC samples\n
+        \t progbar: progressbar widget variable\n
+        \t rootwin: tkinter.TK() object (root frame/window object)'''
         self.samples = datpts               # update samples item
         progbar['maximum'] = datpts         # update progress bar max value
         rootwin.update_idletasks()          # force tkinter to refresh
@@ -164,9 +166,9 @@ class APIC:
         self.data = numpy.zeros((datpts,4),dtype='uint16')      # ADC values numpy array
         #times = numpy.zeros(datpts,dtype='uint32')             # End of peak timestamps array
         datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
-        percent = datpts/100
+        percent = datpts/100                                    # val of 1% of datpts
         self.sendcmd(2,1)                                       # Send byte command
-        self.sock.send(datptsb)                                     # send num if data points to sample
+        self.sock.send(datptsb)                                 # send num if data points to sample
 
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
         for x in range(datpts):
@@ -179,7 +181,6 @@ class APIC:
             #times[x] = int.from_bytes(logtimem,'little')
         
         # Save and return the arrays.
-        self.data = self.mV(self.data)                          # convert to millivolts
-        self.data = self.curvecorrect(self.data)                # apply linear fit corrections
+        self.data = self.curvecorrect(self.data)                # apply linear fit corrections        
         numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',self.data)
         #numpy.savetxt('timeirq.txt',times)
