@@ -5,20 +5,36 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import serial
+import time
 from array import array
 import datetime
 import APICfns as F
 import json
 
-default_timeout = 10    # use as default timeout
-apic = F.APIC('COM3',default_timeout,('192.168.4.1',8080)) # connect to the APIC
 
-### SETUP ###
+################################ PRE SETUP #####################################
+
+fp = open("APICconfig.json","+")            # load config file in rw mode
+default = json.load(fp)                     # load default settings dictionary
+
+def setup_from_saved():
+    ''' Write default settings to the pyboard. '''
+    apic.writeI2C(default['gainpos'],0)
+    time.sleep(0.1)
+    apic.writeI2C(default['threshpos'],1)
+    time.sleep(0.1)
+    apic.drain_socket()
+
+apic = F.APIC('COM3',default['timeout'],default['ipv4']) # connect to the APIC
+
+############################### TKINTER SETUP ###################################
+
 root = Tk()
 root.title('WAQ System')
 #root.wm_iconbitmap('dAPIC.bmp')
 
-### DEFINE GUI FRAMES ###
+############################# DEFINE GUI FRAMES #################################
+
 I2Cframe = LabelFrame(root,text='I2C Digital Potentiometer Control')
 I2Cframe.grid(row=1,column=1,columnspan=6,rowspan=4)
 
@@ -31,7 +47,7 @@ diagnostic.grid(row=5,column=5,rowspan=2,columnspan=2)
 polarityframe = LabelFrame(root,text='Polarity Switch.')
 polarityframe.grid(row=5,column=4,rowspan=2)
 
-### I2C TOOLS FRAME ###
+########################### I2C TOOLS FRAME #####################################
 
 # See apic.readI2C and apic.I2C for explanation of functions.
 def read():
@@ -40,6 +56,7 @@ def read():
         Ireadlabel.config(text='Gain: %i , Width: %i' % (apic.posGAIN,apic.posWIDTH))
     except:
         errorbox.config(text='Timeout')
+
 def scan():
     try:
         apic.scanI2C()      
@@ -65,6 +82,7 @@ var1 = IntVar()
 def write0():
     gain = var0.get()           # retrieve 8 bit int value from the position of the slider
     apic.writeI2C(gain,0)       # call the write function with this value
+
 def write1():
     width = var1.get()
     apic.writeI2C(width,1)
@@ -80,7 +98,7 @@ W1S = Scale(I2Cframe,orient=HORIZONTAL,tickinterval=32,resolution=1,
     from_=1,to=256,length=300,variable=var1)
 W1S.grid(row=3,column=5,rowspan=2)
 
-### ADC Control Frame ###
+############################ ADC Control Frame ##################################
 
 numadc=StringVar()
 
@@ -97,13 +115,12 @@ def ADCi():
     hdat = hdat[hdat>0]                     # remove zeros
     
     # set titles and axis labels
-    ax1.hist(hdat,256,color='b',edgecolor='black')
-    ax1.set_title('Energy Spectrum')
+    ax1.hist(hdat,default['bins'],color='b',edgecolor='black')
+    ax1.set_title(default['title'])
     ax1.set_xlabel('APIC output (V)')
     ax1.set_ylabel('Counts')
     
     #plt.savefig('histdata\histogram'+str(apic.raw_dat_count)+'.png')
-    apic.raw_dat_count+=1                   # new file version number
     
     # add the plot to the gui
     bar1 = FigureCanvasTkAgg(histogram, root)   
@@ -111,7 +128,6 @@ def ADCi():
     
     apic.drain_socket()                     # drain socket to clear interrupt overflows
     
-
 # Add ADC frame widgets
 ADCi_label = Label(ADCframe, text='Interrupt Samples:')
 ADCi_label.grid(row=1,column=1)
@@ -126,7 +142,8 @@ progress = ttk.Progressbar(ADCframe,value=0,maximum=apic.samples,length=300) # a
 progress.grid(row=2,column=1,columnspan=3)
 
 
-### POLARITY FRAME ###
+############################## POLARITY FRAME ###################################
+
 POL = IntVar()
 
 def pselect():
@@ -139,12 +156,20 @@ ppolarity.grid(row=2,column=5,sticky=W)
 npolarity = Radiobutton(polarityframe,command=pselect,text='Negative',value=0,variable=POL)
 npolarity.grid(row=3,column=5,sticky=W)
 
-### CALIBRATION FRAME ###
+########################### CALIBRATION FRAME ###################################
+
 errorbox = Message(root,text='Error messages.',
     bg='white',relief=RIDGE,width=220)
 errorbox.grid(row=10,column=1,columnspan=6)
 
 def f(x,a,b,c):
+    ''' Second order tranfer function to fit to pulse strecher input/output curve.\n
+    f(x,a,b,c)\n
+    Arguments:\n
+    \t x: x axis data
+    \t a: x**2 fit param
+    \t b: gradient fit param
+    \t c: offset fit param'''
     return a*x**2 + b*x + c
 
 def calibrate():
@@ -155,7 +180,8 @@ def calibrate():
     global ax2
     ax2 = fig.add_subplot(122)
     ax2.plot(apic.inputpulses,apic.outputpulses,label='raw data')
-    ax2.plot(apic.inputpulses,f(apic.inputpulses,a,b,c),label='y=%fx^2 + %fx + %fc' % (a,b,c),linestyle='--')
+    ax2.plot(apic.inputpulses,f(apic.inputpulses,a,b,c),
+        label='y=%fx^2 + %fx + %fc' % (a,b,c),linestyle='--')
     ax2.legend()
     fig.savefig('calibration.png')
     # Set apic objects for the gain/offset of the fit
@@ -163,10 +189,10 @@ def calibrate():
     apic.offset = c
     caliblabel.config(text='y=%sx^2+%sx+%s' % (str(a),str(b),str(c)))
     apic.drain_socket()
-
 #    ADCout.config(state=NORMAL)
 
 def rateaq():
+    ''' Acquire the rate of the source. '''
     apic.drain_socket()
     rate = apic.rateaq()
     ratelabel.config(text=str(rate)+'Hz')
@@ -186,19 +212,28 @@ ratelabel.grid(row=2,column=2)
 caliblabel = Label(diagnostic,text='---')
 caliblabel.grid(row=1,column=2)
 
-### TOP MENU BAR ###
+############################### TOP MENU BAR ####################################
+
 menubar = Menu(root)
 
 def connect():
     apic.connect()
 
+def disconnect():
+    apic.disconnect()
+
+def savesettings():
+    ''' Save updated config settings so that setup is preserved on restart. '''
+    json.dump(default,fp,indent=1)
+
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
+filemenu.add_command(label='Save', command=savesettings)
 filemenu.add_command(label="Connect", command=connect)
-filemenu.add_command(label="IP info")
-filemenu.add_command(label="Disconnect")
+filemenu.add_command(label="Disconnect", command=disconnect)
 filemenu.add_separator()
-menubar.add_cascade(label="Connection", menu=filemenu)
+filemenu.add_command(label="Exit", command=root.quit)
+menubar.add_cascade(label="Menu", menu=filemenu)
 
 helpmenu = Menu(menubar, tearoff=0)
 helpmenu.add_command(label="About")

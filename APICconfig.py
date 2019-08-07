@@ -18,4 +18,5 @@ defaults = {
 
     'caliboffset' : 0,
 
+    'bins' : 256,
 }

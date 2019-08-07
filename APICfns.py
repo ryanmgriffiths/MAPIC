@@ -9,6 +9,9 @@ import json
 from tkinter import *
 import tkinter.ttk as ttk
 
+fp = open("APICconfig.json","+")            # open the json config file in rw mode
+default = json.load(fp)                     # load default settings dictionary
+
 class APIC:
     '''Class representing the APIC. Methods invoke measurement and information 
     requests to the board and manage communication over the network socket. I.e. control the board from the PC with this class.'''
@@ -20,13 +23,13 @@ class APIC:
             ,socket.SOCK_STREAM)            # init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
         self.sock.settimeout(tout)          # set socket timeout setting
         self.sock.connect(ipv4)             # Init connection to the socket.
-        self.samples=100
         
         # SET FILE NUMBERS FOR DATA SAVING
         self.raw_dat_count = 0              #  counter for the number of raw data files
-        self.gradient = 1
-        self.offset = 0
-        
+        self.gradient = default['gradient']
+        self.offset = default['offset']
+        self.samples=100
+
         # Find the number of relevant files currently in the data directory, select file version number.
         for datafile in os.listdir('histdata'):
             if datafile.startswith('datairq'):
@@ -52,7 +55,7 @@ class APIC:
                 self.sock.recv(2)   # read 2 byte chunks until none left -> timeout
             except:
                 break               # when sock.recv timeout break loop
-        self.sock.settimeout(10)
+        self.sock.settimeout(default['timeout'])
 
     def sendcmd(self,a,b):
         '''Send a bytearray command using two 8 bit unsigned integers a,b.\n
@@ -70,17 +73,18 @@ class APIC:
         self.I2Caddrs = addresses
     
     def connect(self):
-        '''Reconnect to the pyboard.'''
-        try:
-            self.sock.close()
-        except:
-            print('Socket already closed debug.')
+        '''Connect to the pyboard socket.'''
         self.sock = socket.socket(socket.AF_INET
             ,socket.SOCK_STREAM)            # reinit socket object
         self.sock.connect(self.ipv4)        # init reconnection
 
+    def disconnect(self):
+        ''' Disconnect the socket.'''
+        self.sock.close()
+
     def readI2C(self):
-        '''Read the two I2C digital potentiometers. \n Creates two APIC variables self.posGAIN, self.posWIDTH storing the positions.'''
+        '''Read the two I2C digital potentiometers.\n 
+        Creates two APIC variables self.posGAIN, self.posWIDTH storing the positions.'''
         self.sendcmd(0,0)
         self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive + update gain position variable
         self.posWIDTH = int.from_bytes(self.sock.recv(1),'little')          # receive + update threhold position variable
@@ -110,7 +114,7 @@ class APIC:
     def rateaq(self):
         '''Acquire measured sample activity in Bq, does not work for activities lower than 1Bq.\n
         Returns the sample rate in Hz.'''
-        self.sock.settimeout(10)
+        self.sock.settimeout(default['timeout'])
         self.sendcmd(5,1)
         rateinb = self.sock.recv(4)
         rate = int.from_bytes(rateinb,'little',signed=False)
@@ -118,7 +122,7 @@ class APIC:
     
     def shapergain(self,shapeV):
         '''Turns voltage data from the shaper and converts it into gains using the exponential fit. Returns the gain of the shaper.\n
-        self.shapergain(shapeV)\n
+        self.shapergain(shapeV)\n\n
         \t shapeV: voltage data (numpy array type) from the shaper.'''
         shapergain = 0.0375*numpy.exp(4.4156*shapeV)
         return shapergain
@@ -151,8 +155,8 @@ class APIC:
         self.inputpulses = self.mV(numpy.array(self.inputpulses))
 
     def ADCi(self,datpts,progbar,rootwin):
-        '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples , 
-        returns arrays of 1) 8 samples of peaks in ADC counts and times at the end of each peak in microseconds 
+        '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples,\n 
+        returns arrays of 1) 8 samples of peaks in ADC counts and times at the end of each peak in microseconds\n
         from the start of the experiment.\n
         self.ADCi(datpts,progbar,rootwin)\n
         \t datpts: 64bit number for desired number of ADC samples\n
@@ -183,5 +187,9 @@ class APIC:
         
         # Save and return the arrays.
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections        
-        numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',self.data)
+
+    def savedata(self,data):
+        ''' Save numpy data. '''
+        numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
         #numpy.savetxt('timeirq.txt',times)
+        self.raw_dat_count+=1                               # new file version number
