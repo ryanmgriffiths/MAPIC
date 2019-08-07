@@ -10,6 +10,8 @@
 #include "pin.h"
 #include "portmodules.h"
 #include "stm32f7xx_ll_adc.h"
+#include "stm32f7xx_ll_gpio.h"
+
 
 /* TODO:
 function for socket connection and definition
@@ -244,35 +246,40 @@ static void CPU_CACHE_Enable(void)
 
 /* Config the pulsing pin */
 static void configure_clearpin_pulse(pin_obj_t pulse_pin){
-    mp_hal_pin_config(pulse_pin,MP_HAL_PIN_MODE_INPUT,MP_HAL_PIN_PULL_NONE,0);
+
+    mp_hal_pin_config(pulse_pin,MP_HAL_PIN_MODE_OUTPUT,MP_HAL_PIN_PULL_NONE);
+
 }
 
 /* Pulse GPIO pin for ~ 1us */
 static void clearpin_pulse(pin_ob_t pulse_pin){
+
     mp_hal_pin_high(pulse_pin);
     mp_hal_delay_us(1);
     mp_hal_pin_low(pulse_pin);
+
 }
 
 void AdcAnalogWatchdog1_Callback()
 {
-  /* Disable ADC analog watchdog 1 interruption */
-  LL_ADC_DisableIT_AWD1(ADC1);
-  
-  /* Update status variable of ADC analog watchdog 1 */
-  ubAnalogWatchdog1Status = 1;
+    /* Disable ADC analog watchdog 1 interruption */
+    LL_ADC_DisableIT_AWD1(ADC1);
 
-  /* Perform interrupt handling here */
-  clearpin_pulse();
+    /* Update status variable of ADC analog watchdog 1 */
+    ubAnalogWatchdog1Status = 1;
 
-  /* Reset status variable of ADC analog watchdog 1 */
-  ubAnalogWatchdog1Status = 0;
-  
-  /* Clear flag ADC analog watchdog 1 */
-  LL_ADC_ClearFlag_AWD1(ADC1);
-  
-  /* Enable ADC analog watchdog 1 interruption */
-  LL_ADC_EnableIT_AWD1(ADC1);
+    /* Perform interrupt handling here */
+    
+    clearpin_pulse(pyb_pin_X7);
+
+    /* Reset status variable of ADC analog watchdog 1 */
+    ubAnalogWatchdog1Status = 0;
+
+    /* Clear flag ADC analog watchdog 1 */
+    LL_ADC_ClearFlag_AWD1(ADC1);
+
+    /* Enable ADC analog watchdog 1 interruption */
+    LL_ADC_EnableIT_AWD1(ADC1);
 }
 
 

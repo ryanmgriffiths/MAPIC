@@ -1,3 +1,5 @@
 constants = {
-    'defaulttimeout' : 10,
+    'defaulttimeout'  : 10,
+    'savemode' : True,
+    'defaultipv4' : ()
 }
