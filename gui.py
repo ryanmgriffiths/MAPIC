@@ -92,12 +92,12 @@ def ADCi():
     adcidata = apic.mV(apic.data)
     histogram = plt.Figure(dpi=100)
     global ax1                              # allow changes to ax1 outside of ADCi()
-    ax1 = histogram.add_subplot(121)
+    ax1 = histogram.add_subplot(111)
     hdat = numpy.average(adcidata,axis=1)   # average the ADC peak data over the columns
     hdat = hdat[hdat>0]                     # remove zeros
     ax1.hist(hdat,256,color='b',edgecolor='black')
     ax1.set_title('Energy Spectrum')
-    ax1.set_xlabel('ADC Count')
+    ax1.set_xlabel('APIC output (V)')
     ax1.set_ylabel('Counts')
     #plt.savefig('histdata\histogram'+str(apic.raw_dat_count)+'.png')
     apic.raw_dat_count+=1
