@@ -5,6 +5,7 @@ import socket       # Low level networking module
 import datetime     # for measuring rates
 import numpy
 import os           # OS implementation for file saving
+import json
 from tkinter import *
 import tkinter.ttk as ttk
 

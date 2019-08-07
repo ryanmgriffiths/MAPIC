@@ -8,6 +8,7 @@ import serial
 from array import array
 import datetime
 import APICfns as F
+import json
 
 default_timeout = 10    # use as default timeout
 apic = F.APIC('COM3',default_timeout,('192.168.4.1',8080)) # connect to the APIC
