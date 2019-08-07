@@ -1,4 +1,5 @@
 # main.py -- put your code here!
+# main.py -- put your code here!
 #Import relevant modules
 import network
 import pyb
@@ -33,7 +34,7 @@ adc = ADC(Pin('X12'))                   # define ADC pin for pulse stretcher mea
 calibadc = ADC(Pin('X3'))               # define ADC pin for measuring shaper voltage
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
 pin_mode.value(0)                       # enable manual pulse clearing (i.e. pin -> high)
-#clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
+clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
 polarpin = Pin('X6', Pin.OUT)           # define pin that chooses polarity   
 testpulsepin = Pin('X11',Pin.OUT)        # pin to enable internal test pulses on APIC ### NOT ENABLED YET
 polarpin.value(0)                       # set to 1 to achieve positive polarity
@@ -44,7 +45,7 @@ calibdata = array('H',[0]*4)    # buffer to store ADC data from calibadc
 tim = bytearray(4)              # bytearray for microsecond, 4 byte timestamps
 t0=0                            # time at the beginning of the experiment
 count=0                         # counter for pulses read
-ratecounter = 0
+ratecounter = 0                 # counter for rate measurements
 
 # SET UP WIRELESS ACCESS POINT
 wl_ap = network.WLAN(1)                 # init wlan object
@@ -129,8 +130,8 @@ def rateaq():
 def ratecount(line):
     global ratecounter
     ratecounter+=1
-    #clearpin.value(1)               # perform pulse clearing
-    #clearpin.value(0)
+    clearpin.value(1)               # perform pulse clearing
+    clearpin.value(0)
 
 ### ADC INTERRUPT MEASUREMENT CODE ###
 
