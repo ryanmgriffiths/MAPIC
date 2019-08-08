@@ -1,5 +1,4 @@
 # main.py -- put your code here!
-# main.py -- put your code here!
 #Import relevant modules
 import network
 import pyb
@@ -15,14 +14,15 @@ from pyb import ADC
 from pyb import DAC
 from pyb import LED
 from array import array
+
 micropython.alloc_emergency_exception_buf(100) # For interrupt debugging
 
 # OBJECT DEFINITIONS
 led = LED(1)                # define diagnostic LED
 usb = USB_VCP()             # init VCP object
-# usb.setinterrupt(-1)        # enables sending raw bytes over serial without interpreting interrupt key ctrl-c and aborting
+
 i2c = I2C(1, I2C.MASTER,
-    baudrate=400000)        # define I2C channel, master/slave protocol and baudrate needed
+    baudrate=400000)            # define I2C channel, master/slave protocol and baudrate needed
 t2 = pyb.Timer(1,freq=1000000)          # init timer for polling
 ti = pyb.Timer(2,freq=1000000)          # init timer for interrupts
 
@@ -33,11 +33,11 @@ Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
 adc = ADC(Pin('X12'))                   # define ADC pin for pulse stretcher measurement
 calibadc = ADC(Pin('X3'))               # define ADC pin for measuring shaper voltage
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
-pin_mode.value(0)                       # enable manual pulse clearing (i.e. pin -> high)
+pin_mode.value(1)                       # disable manual pulse clearing (i.e. pin -> low)
 clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
 polarpin = Pin('X6', Pin.OUT)           # define pin that chooses polarity   
-testpulsepin = Pin('X11',Pin.OUT)        # pin to enable internal test pulses on APIC ### NOT ENABLED YET
-polarpin.value(0)                       # set to 1 to achieve positive polarity
+testpulsepin = Pin('X11',Pin.OUT)       # pin to enable internal test pulses on APIC
+polarpin.value(0)                       # set to 1 for positive polarity
 
 # DATA STORAGE AND COUNTERS
 data = array('H',[0]*4)         # buffer for writing adc interrupt data from adc.read_timed() in calibration() and ADCi()
@@ -113,8 +113,6 @@ def cbcal(line):
 ### SOURCE RATE COUNTER ###
 def rateaq():
     print('started')
-    #clearpin.value(1)               # perform pulse clearing
-    #clearpin.value(0)
     global ratecounter
     global rateint
     ratecounter=0
@@ -137,8 +135,6 @@ def ratecount(line):
 
 # MAIN ADC MEASUREMENT CODE
 def ADCi():
-#    clearpin.value(1)
-#    clearpin.value(0)
     global extint
     global count
     count = 0
@@ -157,14 +153,12 @@ def callback(arg):
 #    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')     # timestamp the pulse
 #    conn.send(tim)                 # send timestamp over socket
     conn.send(data)                 # send adc sample over socket
-#    clearpin.value(1)               # perform pulse clearing
- #   clearpin.value(0)
     count+=1                 # pulse counter
     pyb.enable_irq(irqstate)
 
 # TEMP FIX FOR ISR OVERFLOW
 # Uses micropython.schedule to delay interrupts
-# that occur during callback.
+# that occur during ISR callback - interrupting usocket transfer is v. bad.
 def cb(line):
     micropython.schedule(callback,'a')
 
@@ -186,12 +180,12 @@ rateint.disable()
 pyb.enable_irq(irqstate) # re-enable irqs
 
 '''COMMAND CODES: bytearrays that the main program uses to execute functions above/simple
-    functions that are defined in the dict'''
+    functions that are defined in the dict.'''
 commands = {
 # bytes(bytearray([])) : ,
     bytes(bytearray([0,0])) : Ir,    # read first gain potentiometer, then threshold
 
-    bytes(bytearray([0,2])) : Is,                       # scan I2C
+    bytes(bytearray([0,2])) : Is,                       # scan I2C addresses
     bytes(bytearray([1,0])) : lambda : Iw(0x2D),        # write gain pot
     bytes(bytearray([1,1])) : lambda : Iw(0x2C),        # write threshold pot
     bytes(bytearray([2,1])) : ADCi,                     # ADC interrupts
@@ -208,9 +202,12 @@ commands = {
 
 # MAIN PROGRAM LOOP
 try:
+
     while True:
         mode = conn.recv(2)         # wait until the board receives the 2 byte command code, no timeout
         commands[mode]()            # reference commands dictionary and run the corresponding function
-except:
+
+except:                             # if an exception is caught, reset the board so we dont have to manually
+
     print('Connection lost/broken.')
     machine.reset()
