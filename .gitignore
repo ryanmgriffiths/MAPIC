@@ -1,3 +1,5 @@
 histdata/
 APICfns.cpython-37.pyc
 __pycache__/
+APICconfig.py
+jsonmaker.py
