@@ -14,7 +14,7 @@ import json
 
 ################################ PRE SETUP #####################################
 
-fp = open("APICconfig.json","+")            # load config file in rw mode
+fp = open("APICconfig.json","r")            # load config file in rw mode
 default = json.load(fp)                     # load default settings dictionary
 
 def setup_from_saved():
@@ -25,8 +25,8 @@ def setup_from_saved():
     time.sleep(0.1)
     apic.drain_socket()
 
-apic = F.APIC('COM3',default['timeout'],default['ipv4']) # connect to the APIC
-
+apic = F.APIC('COM3',default['timeout'],tuple(default['ipv4'])) # connect to the APIC
+setup_from_saved()
 ############################### TKINTER SETUP ###################################
 
 root = Tk()
@@ -185,8 +185,8 @@ def calibrate():
     ax2.legend()
     fig.savefig('calibration.png')
     # Set apic objects for the gain/offset of the fit
-    apic.gradient = b
-    apic.offset = c
+    apic.calibgradient = b
+    apic.caliboffset = c
     caliblabel.config(text='y=%sx^2+%sx+%s' % (str(a),str(b),str(c)))
     apic.drain_socket()
 #    ADCout.config(state=NORMAL)

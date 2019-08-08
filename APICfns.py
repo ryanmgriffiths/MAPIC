@@ -9,7 +9,7 @@ import json
 from tkinter import *
 import tkinter.ttk as ttk
 
-fp = open("APICconfig.json","+")            # open the json config file in rw mode
+fp = open("APICconfig.json","r")            # open the json config file in rw mode
 default = json.load(fp)                     # load default settings dictionary
 
 class APIC:
@@ -26,8 +26,8 @@ class APIC:
         
         # SET FILE NUMBERS FOR DATA SAVING
         self.raw_dat_count = 0              #  counter for the number of raw data files
-        self.gradient = default['gradient']
-        self.offset = default['offset']
+        self.calibgradient = default['calibgradient']
+        self.caliboffset = default['caliboffset']
         self.samples=100
 
         # Find the number of relevant files currently in the data directory, select file version number.
@@ -109,7 +109,7 @@ class APIC:
         return adc_counts*(3300/4096)
     
     def curvecorrect(self, Input):
-        return ((Input + self.offset)/self.gradient)
+        return ((Input + self.caliboffset)/self.calibgradient)
 
     def rateaq(self):
         '''Acquire measured sample activity in Bq, does not work for activities lower than 1Bq.\n
