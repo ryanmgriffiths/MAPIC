@@ -24,7 +24,7 @@ class APIC:
             ,socket.SOCK_STREAM)            # init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
         self.sock.settimeout(tout)          # set socket timeout setting
         self.sock.connect(ipv4)             # Init connection to the socket.
-        
+        self.sock1 = 0
         # SET FILE NUMBERS FOR DATA SAVING
         self.raw_dat_count = 0              #  counter for the number of raw data files
         self.calibgradient = default['calibgradient']
@@ -75,9 +75,9 @@ class APIC:
     
     def connect(self):
         '''Connect to the pyboard socket.'''
-        self.sock = socket.socket(socket.AF_INET
+        self.sock1 = socket.socket(socket.AF_INET
             ,socket.SOCK_STREAM)            # reinit socket object
-        self.sock.connect(("192.168.4.1",8081))        # init reconnection
+        self.sock1.connect(("192.168.4.1",8081))        # init reconnection
 
     def disconnect(self):
         ''' Disconnect the socket.'''
@@ -190,11 +190,11 @@ class APIC:
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections        
 
     def adcwd_test(self):
-        print("DEBUG0")
         time.sleep(0.01)
         self.connect()
         print("DEBUG1")
         testdat = self.sock.recv(1)
+        print("DEBUGOMEGA")
         print(testdat)
 
     def savedata(self,data):

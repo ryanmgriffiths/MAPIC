@@ -227,11 +227,8 @@ def savesettings():
     json.dump(default,fp,indent=1)
     
 def adcwd():
-    try: 
-        apic.sendcmd(2,0)
-    except:
-        errorbox.config(text='Error!')
-    apic.adcwd_test()    
+    apic.sendcmd(2,0)
+    apic.adcwd_test() 
 
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
