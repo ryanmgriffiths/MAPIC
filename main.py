@@ -5,6 +5,7 @@ import pyb
 import utime
 import machine
 import micropython
+import adcwd                # CUSTOM MIRCOPYTHON MODULE!
 import usocket as socket
 from machine import Pin
 from pyb import ExtInt
@@ -30,7 +31,7 @@ ti = pyb.Timer(2,freq=1000000)          # init timer for interrupts
 #####
 Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
 Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
-adc = ADC(Pin('X12'))                   # define ADC pin for pulse stretcher measurement
+#adc = ADC(Pin('X4'))                   # define ADC pin for pulse stretcher measurement
 calibadc = ADC(Pin('X3'))               # define ADC pin for measuring shaper voltage
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
 pin_mode.value(1)                       # disable manual pulse clearing (i.e. pin -> low)
@@ -103,7 +104,7 @@ def calibrate():
     calibint.disable()
 
 def cbcal(line):
-    adc.read_timed(data,t2)
+    #adc.read_timed(data,t2)
     conn.send(data)
     #clearpin.value(1)
     #clearpin.value(0)
@@ -148,7 +149,7 @@ def ADCi():
 # ISR CALLBACK FUNCTION
 def callback(arg):
     irqstate = pyb.disable_irq()
-    adc.read_timed(data,ti)         # 4 microsecond measurement from ADC at X12,
+#    adc.read_timed(data,ti)         # 4 microsecond measurement from ADC at X12,
     global count                    # reference the global count counter
 #    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')     # timestamp the pulse
 #    conn.send(tim)                 # send timestamp over socket

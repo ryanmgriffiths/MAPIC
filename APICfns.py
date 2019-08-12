@@ -188,6 +188,9 @@ class APIC:
         # Save and return the arrays.
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections        
 
+    def adcwd_test(self):
+        
+
     def savedata(self,data):
         ''' Save numpy data. '''
         numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
