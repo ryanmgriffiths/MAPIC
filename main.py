@@ -136,7 +136,7 @@ def ratecount(line):
     ratecounter+=1
     clearpin.value(1)               # perform pulse clearing
     clearpin.value(0)
-    
+
 # ------------------------------------------------------------------
 ### ADC INTERRUPT MEASUREMENT CODE ###
 # ------------------------------------------------------------------

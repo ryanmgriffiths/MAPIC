@@ -72,12 +72,6 @@ class APIC:
         self.sendcmd(0,2)
         addresses = list(self.sock.recv(2))     # recieve a list of 2 I2C addresses in list of 8 bit nums
         self.I2Caddrs = addresses
-    
-    def connect(self):
-        '''Connect to the pyboard socket.'''
-        self.sock1 = socket.socket(socket.AF_INET
-            ,socket.SOCK_STREAM)            # reinit socket object
-        self.sock1.connect(("192.168.4.1",8081))        # init reconnection
 
     def disconnect(self):
         ''' Disconnect the socket.'''
@@ -190,12 +184,16 @@ class APIC:
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections        
 
     def adcwd_test(self):
-        time.sleep(0.01)
-        self.connect()
+        testbuf = bytearray(5)
+        time.sleep(1)
+        self.sock1 = socket.socket(socket.AF_INET
+        ,socket.SOCK_STREAM)                            # reinit socket object
+        self.sock1.connect(("192.168.4.1",47631))       # init reconnection
+        self.sock1.settimeout(10)
         print("DEBUG1")
-        testdat = self.sock.recv(1)
+        testdat = self.sock1.recv_into(testbuf)
         print("DEBUGOMEGA")
-        print(testdat)
+        print(int.from_bytes(testdat,"little"))
 
     def savedata(self,data):
         ''' Save numpy data. '''
