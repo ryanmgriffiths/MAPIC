@@ -25,8 +25,8 @@ def setup_from_saved():
     time.sleep(0.1)
     apic.drain_socket()
 
-apic = F.APIC('COM3',default['timeout'],tuple(default['ipv4'])) # connect to the APIC
-setup_from_saved()
+apic = F.APIC('COM3',default['timeout'],("192.168.4.1",8080)) # connect to the APIC
+#setup_from_saved()\
 ############################### TKINTER SETUP ###################################
 
 root = Tk()
@@ -225,6 +225,13 @@ def disconnect():
 def savesettings():
     ''' Save updated config settings so that setup is preserved on restart. '''
     json.dump(default,fp,indent=1)
+    
+def adcwd():
+    try: 
+        apic.sendcmd(2,0)
+    except:
+        errorbox.config(text='Error!')
+    apic.adcwd_test()    
 
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
@@ -236,7 +243,7 @@ filemenu.add_command(label="Exit", command=root.quit)
 menubar.add_cascade(label="Menu", menu=filemenu)
 
 helpmenu = Menu(menubar, tearoff=0)
-helpmenu.add_command(label="About")
+helpmenu.add_command(label="About", command=adcwd)
 menubar.add_cascade(label="Help", menu=helpmenu)
 
 root.config(menu=menubar)       # display menubar

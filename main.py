@@ -61,7 +61,10 @@ s.listen(1)                             # listen on this port, 1 connection tole
 conn, addr = s.accept()                 # accept any connection
 print('Connected!')                     ### diagnostic purposes only, not seen by socket
 
+# ------------------------------------------------------------------
 ### I2C CONTROL ###
+# ------------------------------------------------------------------
+
 def Ir():
     if i2c.is_ready(0x2D) and i2c.is_ready(0x2C):
         gain = i2c.recv(1,addr=0x2D)
@@ -92,8 +95,9 @@ def Is():
     conn.send(scan)
     return None
 
-
+# ------------------------------------------------------------------
 ### CALIBRATION CURVE CODE ###
+# ------------------------------------------------------------------
 
 def calibrate():
     global calibint
@@ -131,8 +135,9 @@ def ratecount(line):
     ratecounter+=1
     clearpin.value(1)               # perform pulse clearing
     clearpin.value(0)
-
+# ------------------------------------------------------------------
 ### ADC INTERRUPT MEASUREMENT CODE ###
+# ------------------------------------------------------------------
 
 # MAIN ADC MEASUREMENT CODE
 def ADCi():
@@ -180,15 +185,25 @@ calibint.disable()
 rateint.disable()
 pyb.enable_irq(irqstate) # re-enable irqs
 
+# ------------------------------------------------------------------
+### AWD CODE ###
+# ------------------------------------------------------------------
+
+def ADCwd():
+    conn.close()
+    AWD = adcwd.adcwdObj(0,200)
+    AWD.start_peakfinding(1000)
+
 '''COMMAND CODES: bytearrays that the main program uses to execute functions above/simple
     functions that are defined in the dict.'''
 commands = {
-# bytes(bytearray([])) : ,
+    # bytes(bytearray([a,b])) : command function,
     bytes(bytearray([0,0])) : Ir,    # read first gain potentiometer, then threshold
 
     bytes(bytearray([0,2])) : Is,                       # scan I2C addresses
     bytes(bytearray([1,0])) : lambda : Iw(0x2D),        # write gain pot
     bytes(bytearray([1,1])) : lambda : Iw(0x2C),        # write threshold pot
+    bytes(bytearray([2,0])) : ADCwd,                    # AWD peakfinding
     bytes(bytearray([2,1])) : ADCi,                     # ADC interrupts
 
     bytes(bytearray([4,0])) : lambda : polarpin.value(0),       # Negative polarity
@@ -199,16 +214,9 @@ commands = {
 
     bytes(bytearray([6,0])) : lambda: testpulsepin.value(0),    # disable test pulses
     bytes(bytearray([6,1])) : lambda: testpulsepin.value(1)     # enable test pulses
-}
+    }
 
 # MAIN PROGRAM LOOP
-try:
-
-    while True:
-        mode = conn.recv(2)         # wait until the board receives the 2 byte command code, no timeout
-        commands[mode]()            # reference commands dictionary and run the corresponding function
-
-except:                             # if an exception is caught, reset the board so we dont have to manually
-
-    print('Connection lost/broken.')
-    machine.reset()
+while True:
+    mode = conn.recv(2)         # wait until the board receives the 2 byte command code, no timeout
+    commands[mode]()            # reference commands dictionary and run the corresponding function

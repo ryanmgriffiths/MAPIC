@@ -8,6 +8,7 @@ import os           # OS implementation for file saving
 import json
 from tkinter import *
 import tkinter.ttk as ttk
+import time
 
 fp = open("APICconfig.json","r")            # open the json config file in rw mode
 default = json.load(fp)                     # load default settings dictionary
@@ -76,7 +77,7 @@ class APIC:
         '''Connect to the pyboard socket.'''
         self.sock = socket.socket(socket.AF_INET
             ,socket.SOCK_STREAM)            # reinit socket object
-        self.sock.connect(self.ipv4)        # init reconnection
+        self.sock.connect(("192.168.4.1",8081))        # init reconnection
 
     def disconnect(self):
         ''' Disconnect the socket.'''
@@ -189,7 +190,12 @@ class APIC:
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections        
 
     def adcwd_test(self):
-        
+        print("DEBUG0")
+        time.sleep(0.01)
+        self.connect()
+        print("DEBUG1")
+        testdat = self.sock.recv(1)
+        print(testdat)
 
     def savedata(self,data):
         ''' Save numpy data. '''
