@@ -26,7 +26,7 @@ def setup_from_saved():
     apic.drain_socket()
 
 apic = F.APIC('COM3',default['timeout'],("192.168.4.1",8080)) # connect to the APIC
-#setup_from_saved()\
+
 ############################### TKINTER SETUP ###################################
 
 root = Tk()
@@ -141,7 +141,6 @@ ADC_out.grid(row=1,column=3)
 progress = ttk.Progressbar(ADCframe,value=0,maximum=apic.samples,length=300) # add a progress bar
 progress.grid(row=2,column=1,columnspan=3)
 
-
 ############################## POLARITY FRAME ###################################
 
 POL = IntVar()
@@ -217,10 +216,10 @@ caliblabel.grid(row=1,column=2)
 menubar = Menu(root)
 
 def connect():
-    apic.connect()
+    apic.sock.connect(default['ipv4'])
 
 def disconnect():
-    apic.disconnect()
+    apic.sock.close()
 
 def savesettings():
     ''' Save updated config settings so that setup is preserved on restart. '''
@@ -228,7 +227,9 @@ def savesettings():
     
 def adcwd():
     apic.sendcmd(2,0)
-    apic.adcwd_test() 
+    progress['value'] = 0                   # reset progressbar
+    datapoints = int(numadc.get())          # get desired number of samples from the tkinter text entry
+    apic.adcwd_test(datapoints,progress,root)     # take data using ADCi protocol
 
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
