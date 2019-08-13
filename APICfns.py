@@ -8,6 +8,7 @@ import os           # OS implementation for file saving
 import json
 from tkinter import *
 import tkinter.ttk as ttk
+import time
 
 fp = open("APICconfig.json","r")            # open the json config file in rw mode
 default = json.load(fp)                     # load default settings dictionary
@@ -23,7 +24,7 @@ class APIC:
             ,socket.SOCK_STREAM)            # init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
         self.sock.settimeout(tout)          # set socket timeout setting
         self.sock.connect(ipv4)             # Init connection to the socket.
-        
+        self.sock1 = 0
         # SET FILE NUMBERS FOR DATA SAVING
         self.raw_dat_count = 0              #  counter for the number of raw data files
         self.calibgradient = default['calibgradient']
@@ -71,12 +72,6 @@ class APIC:
         self.sendcmd(0,2)
         addresses = list(self.sock.recv(2))     # recieve a list of 2 I2C addresses in list of 8 bit nums
         self.I2Caddrs = addresses
-    
-    def connect(self):
-        '''Connect to the pyboard socket.'''
-        self.sock = socket.socket(socket.AF_INET
-            ,socket.SOCK_STREAM)            # reinit socket object
-        self.sock.connect(self.ipv4)        # init reconnection
 
     def disconnect(self):
         ''' Disconnect the socket.'''
@@ -155,6 +150,7 @@ class APIC:
         self.inputpulses = self.mV(numpy.array(self.inputpulses))
 
     def ADCi(self,datpts,progbar,rootwin):
+
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples,\n 
         returns arrays of 1) 8 samples of peaks in ADC counts and times at the end of each peak in microseconds\n
         from the start of the experiment.\n
@@ -162,14 +158,13 @@ class APIC:
         \t datpts: 64bit number for desired number of ADC samples\n
         \t progbar: progressbar widget variable\n
         \t rootwin: tkinter.TK() object (root frame/window object)'''
-        self.samples = datpts               # update samples item
-        progbar['maximum'] = datpts         # update progress bar max value
-        rootwin.update_idletasks()          # force tkinter to refresh
-        readm = bytearray(8)                # Bytearray for receiving ADC data (with no mem allocation)
-        #logtimem = bytearray(4)            # Bytearray to receive times
+
+        self.samples = datpts                                   # update samples item
+        progbar['maximum'] = datpts                             # update progress bar max value
+        rootwin.update_idletasks()                              # force tkinter to refresh
+        readm = bytearray(8)                                    # Bytearray for receiving ADC data (with no mem allocation)
 
         self.data = numpy.zeros((datpts,4),dtype='uint16')      # ADC values numpy array
-        #times = numpy.zeros(datpts,dtype='uint32')             # End of peak timestamps array
         datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
         percent = datpts/100                                    # val of 1% of datpts
         self.sendcmd(2,1)                                       # Send byte command
@@ -180,14 +175,33 @@ class APIC:
             self.sock.recv_into(readm)
             self.data[x,:] = numpy.frombuffer(readm,dtype='uint16')
             if x%percent==0:
-                progbar['value'] = x                                # update the progress bar value
-                rootwin.update()                          # force tkinter to update - non-ideal solution
-            #self.sock.recv_into(logtimem,4)
-            #times[x] = int.from_bytes(logtimem,'little')
+                progbar['value'] = x                            # update the progress bar value
+                rootwin.update()                                # force tkinter to update - non-ideal solution
         
         # Save and return the arrays.
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections        
 
+    def adcwd_test(self,datpts,progbar,rootwin):
+        '''INIT NEW SOCKET & TAKE DATA FROM BOARD!'''
+        self.sock1 = socket.socket(socket.AF_INET
+            ,socket.SOCK_STREAM)                                # reinit socket object
+        self.sock1.settimeout(3)                                # set timeout -> default this
+        self.sock1.connect(("192.168.4.1",9000))                # init reconnection, new port
+
+        self.samples = datpts                                   # number of samples class var
+        progbar['maximum'] = datpts                             # update progress bar max value
+        rootwin.update_idletasks()                              # force tkinter to refresh
+        self.data = numpy.zeros((datpts,4),
+            dtype='uint16')                                     # ADC values numpy array
+        datptsb = datpts.to_bytes(8,'little',
+            signed=False)                                       # convert data to an 8 byte integer for sending
+
+        self.sock1.send(datptsb)                                # send num if data points to sample
+        # add a for loop for data transfer, long timeout.
+        testdat = self.sock1.recv(1)
+        print(testdat)
+
+ 
     def savedata(self,data):
         ''' Save numpy data. '''
         numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
