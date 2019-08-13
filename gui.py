@@ -11,8 +11,13 @@ import datetime
 import APICfns as F
 import json
 
-
-################################ PRE SETUP #####################################
+#==================================================================================#
+# SETUP
+# Reload previous setup from json file,
+# create new apic object, connect + setup class variables for socket connection.
+# init root window
+# setup each frame with a label and allocate sizes with grid.
+#==================================================================================#
 
 fp = open("APICconfig.json","r")            # load config file in rw mode
 default = json.load(fp)                     # load default settings dictionary
@@ -27,13 +32,9 @@ def setup_from_saved():
 
 apic = F.APIC('COM3',default['timeout'],("192.168.4.1",8080)) # connect to the APIC
 
-############################### TKINTER SETUP ###################################
-
 root = Tk()
 root.title('WAQ System')
 #root.wm_iconbitmap('dAPIC.bmp')
-
-############################# DEFINE GUI FRAMES #################################
 
 I2Cframe = LabelFrame(root,text='I2C Digital Potentiometer Control')
 I2Cframe.grid(row=1,column=1,columnspan=6,rowspan=4)
@@ -47,7 +48,11 @@ diagnostic.grid(row=5,column=5,rowspan=2,columnspan=2)
 polarityframe = LabelFrame(root,text='Polarity Switch.')
 polarityframe.grid(row=5,column=4,rowspan=2)
 
-########################### I2C TOOLS FRAME #####################################
+#==================================================================================#
+# I2C TOOLS FRAME:
+# Define read/write functions and map to buttons/sliders for each pot.
+# Define scan function to return the two I2C addresses.
+#==================================================================================#
 
 # See apic.readI2C and apic.I2C for explanation of functions.
 def read():
@@ -98,8 +103,9 @@ W1S = Scale(I2Cframe,orient=HORIZONTAL,tickinterval=32,resolution=1,
     from_=1,to=256,length=300,variable=var1)
 W1S.grid(row=3,column=5,rowspan=2)
 
-############################ ADC Control Frame ##################################
-
+#==================================================================================#
+# ADC CONTROL FRAME
+#==================================================================================#
 numadc=StringVar()
 
 def ADCi():
@@ -141,8 +147,9 @@ ADC_out.grid(row=1,column=3)
 progress = ttk.Progressbar(ADCframe,value=0,maximum=apic.samples,length=300) # add a progress bar
 progress.grid(row=2,column=1,columnspan=3)
 
-############################## POLARITY FRAME ###################################
-
+#==================================================================================#
+# POLARITY FRAME
+#==================================================================================#
 POL = IntVar()
 
 def pselect():
@@ -155,7 +162,9 @@ ppolarity.grid(row=2,column=5,sticky=W)
 npolarity = Radiobutton(polarityframe,command=pselect,text='Negative',value=0,variable=POL)
 npolarity.grid(row=3,column=5,sticky=W)
 
-########################### CALIBRATION FRAME ###################################
+#==================================================================================#
+# CALIBRATION FRAME
+#==================================================================================#
 
 errorbox = Message(root,text='Error messages.',
     bg='white',relief=RIDGE,width=220)
@@ -211,7 +220,9 @@ ratelabel.grid(row=2,column=2)
 caliblabel = Label(diagnostic,text='---')
 caliblabel.grid(row=1,column=2)
 
-############################### TOP MENU BAR ####################################
+#==================================================================================#
+# TOP MENU FUNCTIONS + OPTIONS
+#==================================================================================#
 
 menubar = Menu(root)
 

@@ -18,20 +18,23 @@ from array import array
 
 micropython.alloc_emergency_exception_buf(100) # For interrupt debugging
 
+#==================================================================================#
+# SETUP
+#==================================================================================#
+
 # OBJECT DEFINITIONS
-led = LED(1)                # define diagnostic LED
-usb = USB_VCP()             # init VCP object
+led = LED(1)                            # define diagnostic LED
+usb = USB_VCP()                         # init VCP object
 
 i2c = I2C(1, I2C.MASTER,
-    baudrate=400000)            # define I2C channel, master/slave protocol and baudrate needed
+    baudrate=400000)                    # define I2C channel, master/slave protocol and baudrate needed
 t2 = pyb.Timer(1,freq=1000000)          # init timer for polling
 ti = pyb.Timer(2,freq=1000000)          # init timer for interrupts
 
 # PIN SETUP AND INITIAL POLARITY/INTERRUPT MODE
-#####
 Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
 Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
-adc = ADC(Pin('X4'))                   # define ADC pin for pulse stretcher measurement
+adc = ADC(Pin('X4'))                    # define ADC pin for pulse stretcher measurement
 calibadc = ADC(Pin('X3'))               # define ADC pin for measuring shaper voltage
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
 pin_mode.value(1)                       # disable manual pulse clearing (i.e. pin -> low)
@@ -41,12 +44,12 @@ testpulsepin = Pin('X11',Pin.OUT)       # pin to enable internal test pulses on 
 polarpin.value(0)                       # set to 1 for positive polarity
 
 # DATA STORAGE AND COUNTERS
-data = array('H',[0]*4)         # buffer for writing adc interrupt data from adc.read_timed() in calibration() and ADCi()
-calibdata = array('H',[0]*4)    # buffer to store ADC data from calibadc
-tim = bytearray(4)              # bytearray for microsecond, 4 byte timestamps
-t0=0                            # time at the beginning of the experiment
-count=0                         # counter for pulses read
-ratecounter = 0                 # counter for rate measurements
+data = array('H',[0]*4)                 # buffer for writing adc interrupt data from adc.read_timed() in calibration() and ADCi()
+calibdata = array('H',[0]*4)            # buffer to store ADC data from calibadc
+tim = bytearray(4)                      # bytearray for microsecond, 4 byte timestamps
+t0=0                                    # time at the beginning of the experiment
+count=0                                 # counter for pulses read
+ratecounter = 0                         # counter for rate measurements
 
 # SET UP WIRELESS ACCESS POINT
 wl_ap = network.WLAN(1)                 # init wlan object
@@ -55,15 +58,16 @@ wl_ap.config(channel=1)                 # set AP channel
 wl_ap.active(1)                         # enable the AP
 
 # SET UP THE NETWORK SOCKET
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s = socket.socket(socket.AF_INET,
+    socket.SOCK_STREAM)
 s.bind(('',8080))                       # network bound to port 8080
 s.listen(1)                             # listen on this port, 1 connection tolerated
 conn, addr = s.accept()                 # accept any connection
 print('Connected!')                     ### diagnostic purposes only, not seen by socket
 
-# ------------------------------------------------------------------
-### I2C CONTROL ###
-# ------------------------------------------------------------------
+#==================================================================================#
+# I2C CONTROL
+#==================================================================================#
 
 def Ir():
     if i2c.is_ready(0x2D) and i2c.is_ready(0x2C):
@@ -95,9 +99,9 @@ def Is():
     conn.send(scan)
     return None
 
-# ------------------------------------------------------------------
-### CALIBRATION CURVE CODE ###
-# ------------------------------------------------------------------
+#==================================================================================#
+# CALIBRATION CURVE CODE
+#==================================================================================#
 
 def calibrate():
     global calibint
@@ -115,7 +119,10 @@ def cbcal(line):
     calibadc.read_timed(calibdata,t2)
     conn.send(calibdata)
 
-### SOURCE RATE COUNTER ###
+#==================================================================================#
+# RATE MEASUREMENT CODE
+#==================================================================================#
+
 def rateaq():
     print('started')
     global ratecounter
@@ -136,9 +143,12 @@ def ratecount(line):
     clearpin.value(1)               # perform pulse clearing
     clearpin.value(0)
 
-# ------------------------------------------------------------------
-### ADC INTERRUPT MEASUREMENT CODE ###
-# ------------------------------------------------------------------
+#==================================================================================#
+# ADC INTERRUPT MEASUREMENT CODE:                            
+# Python level legacy function, interrupt to take and send data    
+# samples mnum peaks, uses schedule to delay measurements for               
+# concurrent interrupts.                                
+#==================================================================================#
 
 # MAIN ADC MEASUREMENT CODE
 def ADCi():
@@ -186,17 +196,21 @@ calibint.disable()
 rateint.disable()
 pyb.enable_irq(irqstate) # re-enable irqs
 
-# ------------------------------------------------------------------
-### AWD CODE ###
-# ------------------------------------------------------------------
+#==================================================================================#
+# AWD CODE
+#==================================================================================#
 """
 def ADCwd():
     conn.close()
     AWD = adcwd.adcwdObj(0,200)
     AWD.start_peakfinding(1000)
 """
-'''COMMAND CODES: bytearrays that the main program uses to execute functions above/simple
-    functions that are defined in the dict.'''
+#==================================================================================#
+# COMMAND CODES:
+# bytearrays used by main loop to execute functions
+# expect a byte command.
+#==================================================================================#
+
 commands = {
     # bytes(bytearray([a,b])) : command function,
     bytes(bytearray([0,0])) : Ir,    # read first gain potentiometer, then threshold
@@ -217,11 +231,14 @@ commands = {
     bytes(bytearray([6,1])) : lambda: testpulsepin.value(1)     # enable test pulses
     }
 
-# MAIN PROGRAM LOOP
+#==================================================================================#
+# MAIN LOOP
+#==================================================================================#
 while True:
     try: 
         mode = conn.recv(2)         # wait until the board receives the 2 byte command code, no timeout
         commands[mode]()            # reference commands dictionary and run the corresponding function
     except:
-	print("System Reset!")
+        conn.close()
+        print("System Reset!")
         machine.reset()
