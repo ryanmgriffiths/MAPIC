@@ -238,9 +238,9 @@ def savesettings():
     
 def adcwd():
     apic.sendcmd(2,0)
-    progress['value'] = 0                   # reset progressbar
-    datapoints = int(numadc.get())          # get desired number of samples from the tkinter text entry
-    apic.adcwd_test(datapoints,progress,root)     # take data using ADCi protocol
+    #progress['value'] = 0                   # reset progressbar
+    #datapoints = int(numadc.get())          # get desired number of samples from the tkinter text entry
+    apic.adcwd_test(100,progress,root)     # take data using ADCi protocol
 
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)

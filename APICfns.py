@@ -180,18 +180,25 @@ class APIC:
         
         # Save and return the arrays.
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections        
-
+    def savedata(self,data):
+        ''' Save numpy data. '''
+        numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
+        #numpy.savetxt('timeirq.txt',times)
+        self.raw_dat_count+=1                               # new file version number
+    
     def adcwd_test(self,datpts,progbar,rootwin):
         '''INIT NEW SOCKET & TAKE DATA FROM BOARD!'''
-        self.sock1 = socket.socket(socket.AF_INET
-            ,socket.SOCK_STREAM)                                # reinit socket object
-        self.sock1.settimeout(3)                                # set timeout -> default this
-        self.sock1.connect(("192.168.4.1",9000))                # init reconnection, new port
+        sock1 = socket.socket(socket.AF_INET
+            ,socket.SOCK_DGRAM)                                # reinit socket object
+        sock1.settimeout(10)                                # set timeout -> default this
+        sock1.connect(("192.168.4.1",9000))                # init reconnection, new port
+        testdat = sock1.recvfrom(1)
+        print(testdat)
 
-        self.samples = datpts                                   # number of samples class var
-        progbar['maximum'] = datpts                             # update progress bar max value
-        rootwin.update_idletasks()                              # force tkinter to refresh
-        self.data = numpy.zeros((datpts,4),
+        #self.samples = datpts                                   # number of samples class var
+        #progbar['maximum'] = datpts                             # update progress bar max value
+        #rootwin.update_idletasks()                              # force tkinter to refresh
+"""        self.data = numpy.zeros((datpts,4),
             dtype='uint16')                                     # ADC values numpy array
         datptsb = datpts.to_bytes(8,'little',
             signed=False)                                       # convert data to an 8 byte integer for sending
@@ -199,11 +206,6 @@ class APIC:
         self.sock1.send(datptsb)                                # send num if data points to sample
         # add a for loop for data transfer, long timeout.
         testdat = self.sock1.recv(1)
-        print(testdat)
+        print(testdat)"""
 
  
-    def savedata(self,data):
-        ''' Save numpy data. '''
-        numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
-        #numpy.savetxt('timeirq.txt',times)
-        self.raw_dat_count+=1                               # new file version number

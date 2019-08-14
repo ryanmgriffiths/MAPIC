@@ -5,7 +5,7 @@ import pyb
 import utime
 import machine
 import micropython
-#import adcwd                # CUSTOM MIRCOPYTHON MODULE!
+import adcwd                # CUSTOM MIRCOPYTHON MODULE!
 import usocket as socket
 from machine import Pin
 from pyb import ExtInt
@@ -199,12 +199,12 @@ pyb.enable_irq(irqstate) # re-enable irqs
 #==================================================================================#
 # AWD CODE
 #==================================================================================#
-"""
+
 def ADCwd():
     conn.close()
     AWD = adcwd.adcwdObj(0,200)
-    AWD.start_peakfinding(1000)
-"""
+    AWD.start_peakfinding_udp(1000)
+
 #==================================================================================#
 # COMMAND CODES:
 # bytearrays used by main loop to execute functions
@@ -218,7 +218,7 @@ commands = {
     bytes(bytearray([0,2])) : Is,                       # scan I2C addresses
     bytes(bytearray([1,0])) : lambda : Iw(0x2D),        # write gain pot
     bytes(bytearray([1,1])) : lambda : Iw(0x2C),        # write threshold pot
-    #bytes(bytearray([2,0])) : ADCwd,                    # AWD peakfinding
+    bytes(bytearray([2,0])) : ADCwd,                    # AWD peakfinding
     bytes(bytearray([2,1])) : ADCi,                     # ADC interrupts
 
     bytes(bytearray([4,0])) : lambda : polarpin.value(0),       # Negative polarity
