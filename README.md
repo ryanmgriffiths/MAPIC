@@ -212,9 +212,15 @@ ADD DEFINITIONS AND THINGS HERE!
 
 ## Useful Links
 
+### Python Links
 This application requires knowledge and use of the following python libraries/implementations in addition to those installed through pip:
 
 * [Tkinter](https://www.tutorialspoint.com/python/python_gui_programming)
 * [Socket](https://docs.python.org/3/library/socket.html)
 * [Micropython](https://docs.micropython.org/en/latest/)
 * [Micropython for the pyboard D](https://pybd.io/hw/pybd_sfxw.html)
+
+### C Links
+* STMCUBE32F7
+* lwip
+* micropython C module extension
