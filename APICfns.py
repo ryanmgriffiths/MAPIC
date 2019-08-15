@@ -202,7 +202,7 @@ class APIC:
         sock1.settimeout(1)                                     # set timeout -> default this
         #sock1.connect(("192.168.4.1",9000))                     # init reconnection, new port
         sock1.bind(('', 9000))
-        while True:
+        for x in range(10):
             try:
                 testdat = sock1.recvfrom(2048)
                 print("Success")

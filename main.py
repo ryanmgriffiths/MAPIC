@@ -69,7 +69,7 @@ s = socket.socket(socket.AF_INET,
     socket.SOCK_DGRAM)
 s.bind(('',8080))                       # network listens on port 8080
 cipv4 = ('192.168.4.16', 8080)          # destination for sending data
-
+awdipv4 = ('192.168.4.16', 9000)
 print("SOCKET BOUND")
 
 #==================================================================================#
@@ -212,7 +212,7 @@ pyb.enable_irq(irqstate) # re-enable irqs
 def ADCwd():
     s.close()
     AWD = adcwd.adcwdObj(0,200)
-    AWD.start_peakfinding_udp(1000)
+    AWD.start_peakfinding_udp(1000,awdipv4)
 
 #==================================================================================#
 # COMMAND CODES:
