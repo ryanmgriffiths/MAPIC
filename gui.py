@@ -235,13 +235,14 @@ def disconnect():
 
 def savesettings():
     ''' Save updated config settings so that setup is preserved on restart. '''
+    
     fp = open("APICconfig.json","w")
 
-    default['calibgradient'] = 
+    default['calibgradient'] = apic.calibgradient
     default['timeout'] = apic.tout
-    default[''] =  
-    default[''] = 
-    default[''] = 
+    default['gainpos'] = apic.posGAIN
+    default['threshpos'] = apic.posTHRESH
+    default['savemode'] = apic.savemode
 
     json.dump(default,fp,indent=1)
     fp.close()
@@ -251,9 +252,6 @@ def adcwd():
     #progress['value'] = 0                   # reset progressbar
     #datapoints = int(numadc.get())          # get desired number of samples from the tkinter text entry
     apic.adcwd_test(100,progress,root)     # take data using ADCi protocol
-
-def sendtest():
-    apic.sendtset()
 
 
 # create a pulldown menu, and add it to the menu bar
@@ -266,7 +264,7 @@ filemenu.add_command(label="Exit", command=root.quit)
 menubar.add_cascade(label="Menu", menu=filemenu)
 
 helpmenu = Menu(menubar, tearoff=0)
-helpmenu.add_command(label="About", command=sendtest)
+helpmenu.add_command(label="About", command=adcwd)
 menubar.add_cascade(label="Help", menu=helpmenu)
 
 root.config(menu=menubar)       # display menubar

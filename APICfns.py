@@ -12,6 +12,7 @@ import time
 
 fp = open("APICconfig.json","r")            # open the json config file in rw mode
 default = json.load(fp)                     # load default settings dictionary
+fp.close()
 
 class APIC:
     '''Class representing the APIC. Methods invoke measurement and information 
@@ -32,6 +33,7 @@ class APIC:
         self.calibgradient = default['calibgradient']
         self.caliboffset = default['caliboffset']
         self.samples=100
+        self.savemode = default['savemode']
 
         # Find the number of relevant files currently in the data directory, select file version number.
         for datafile in os.listdir('histdata'):
@@ -66,10 +68,14 @@ class APIC:
         Arguments:\n
         \t a: first command byte for type of command \n
         \t b: second command byte for subsection.'''
-        self.sock.sendto(bytearray([a,b]),("192.168.4.1",8080))
+        self.sock.sendto(bytearray([a,b]),self.ipv4)
 
     def sendtset(self):
         self.sendcmd(8,8)
+    
+    def disconnect(self):
+        ''' Disconnect the socket.'''
+        self.sock.close()
 
     def scanI2C(self):
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.\n
@@ -78,16 +84,12 @@ class APIC:
         addresses = list(self.sock.recv(2))     # recieve a list of 2 I2C addresses in list of 8 bit nums
         self.I2Caddrs = addresses
 
-    def disconnect(self):
-        ''' Disconnect the socket.'''
-        self.sock.close()
-
     def readI2C(self):
         '''Read the two I2C digital potentiometers.\n 
-        Creates two APIC variables self.posGAIN, self.posWIDTH storing the positions.'''
+        Creates two APIC variables self.posGAIN, self.posTHRESH storing the positions.'''
         self.sendcmd(0,0)
         self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive + update gain position variable
-        self.posWIDTH = int.from_bytes(self.sock.recv(1),'little')          # receive + update threhold position variable
+        self.posTHRESH = int.from_bytes(self.sock.recv(1),'little')          # receive + update threhold position variable
     
     def writeI2C(self,pos,pot):
         '''Writes 8 bit values to one the two digital potentiometers.\n 
@@ -96,10 +98,8 @@ class APIC:
             \t pos: desired position of pot 8 bit value
             \t pot: takes value 0,1 for threshold and gain pots respectively'''
         self.sendcmd(1,pot)
-        print("SENT1")
         time.sleep(0.5)
-        self.sock.sendto(bytearray([pos]),("192.168.4.1",8080))
-        print("SENT2")
+        self.sock.sendto(bytearray([pos]),self.ipv4)
 
     def polarity(self,polarity=1):
         '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
