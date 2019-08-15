@@ -16,15 +16,17 @@ default = json.load(fp)                     # load default settings dictionary
 class APIC:
     '''Class representing the APIC. Methods invoke measurement and information 
     requests to the board and manage communication over the network socket. I.e. control the board from the PC with this class.'''
-    def __init__(self,address,tout,ipv4):   # intialise connection variables.
+    def __init__(self,tout,ipv4):   # intialise connection variables.
+        
         self.tout = tout                    # timeout for both serial and socket connections in seconds.
-        self.address = address              # COM port/or dev/tty OS dependent.
-        self.ipv4 = ipv4                    # tuple of IP string and port e.g. ('123.456.78.9',1234) (see readme & socket)
+        self.ipv4 = tuple(ipv4)                    # tuple of IP string and port e.g. ('123.456.78.9',1234) (see readme & socket)
+        
+        
         self.sock = socket.socket(socket.AF_INET
-            ,socket.SOCK_STREAM)            # init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
+            ,socket.SOCK_DGRAM)             # init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
         self.sock.settimeout(tout)          # set socket timeout setting
-        self.sock.connect(ipv4)             # Init connection to the socket.
-        self.sock1 = 0
+        self.sock.bind(('',8080))
+
         # SET FILE NUMBERS FOR DATA SAVING
         self.raw_dat_count = 0              #  counter for the number of raw data files
         self.calibgradient = default['calibgradient']
@@ -64,7 +66,10 @@ class APIC:
         Arguments:\n
         \t a: first command byte for type of command \n
         \t b: second command byte for subsection.'''
-        self.sock.send(bytearray([a,b]))
+        self.sock.sendto(bytearray([a,b]),("192.168.4.1",8080))
+
+    def sendtset(self):
+        self.sendcmd(8,8)
 
     def scanI2C(self):
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.\n
@@ -91,7 +96,10 @@ class APIC:
             \t pos: desired position of pot 8 bit value
             \t pot: takes value 0,1 for threshold and gain pots respectively'''
         self.sendcmd(1,pot)
-        self.sock.send(bytes([pos]))          # Convert desired pot value to bytes and send.
+        print("SENT1")
+        time.sleep(0.5)
+        self.sock.sendto(bytearray([pos]),("192.168.4.1",8080))
+        print("SENT2")
 
     def polarity(self,polarity=1):
         '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
@@ -168,7 +176,7 @@ class APIC:
         datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
         percent = datpts/100                                    # val of 1% of datpts
         self.sendcmd(2,1)                                       # Send byte command
-        self.sock.send(datptsb)                                 # send num if data points to sample
+        self.sock.sendto(datptsb,self.ipv4)                                 # send num if data points to sample
 
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
         for x in range(datpts):
@@ -180,6 +188,7 @@ class APIC:
         
         # Save and return the arrays.
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections        
+    
     def savedata(self,data):
         ''' Save numpy data. '''
         numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)

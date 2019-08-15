@@ -57,13 +57,20 @@ wl_ap.config(essid='PYBD')              # set AP SSID
 wl_ap.config(channel=1)                 # set AP channel
 wl_ap.active(1)                         # enable the AP
 
-# SET UP THE NETWORK SOCKET
+while wl_ap.status('stations')==[]:
+    utime.sleep(1)
+
+utime.sleep(2)
+
+print("CONNECTION RECEIVED")
+
+# SET UP THE NETWORK SOCKET FOR UDP
 s = socket.socket(socket.AF_INET,
-    socket.SOCK_STREAM)
-s.bind(('',8080))                       # network bound to port 8080
-s.listen(1)                             # listen on this port, 1 connection tolerated
-conn, addr = s.accept()                 # accept any connection
-print('Connected!')                     ### diagnostic purposes only, not seen by socket
+    socket.SOCK_DGRAM)
+s.bind(('',8080))                       # network listens on port 8080
+cipv4 = ('192.168.4.16', 8080)          # destination for sending data
+
+print("SOCKET BOUND")
 
 #==================================================================================#
 # I2C CONTROL
@@ -73,15 +80,17 @@ def Ir():
     if i2c.is_ready(0x2D) and i2c.is_ready(0x2C):
         gain = i2c.recv(1,addr=0x2D)
         threshold = i2c.recv(1,addr=0x2C)
-        conn.send(gain)
-        conn.send(threshold)
+        s.sendto(gain,cipv4)
+        s.sendto(threshold,cipv4)
     else:
         raise Exception
     return None
 
 def Iw(address):
     if i2c.is_ready(address):
-        value = int.from_bytes(conn.recv(1),'little')
+        recvd = s.recv(1)
+        value = int.from_bytes(recvd,'little',False)
+        print(recvd)
         b = bytearray([0x00,value])
         i2c.send(b,addr=address)
     else:
@@ -96,13 +105,13 @@ def Is():
     else:
         for idx,chip in enumerate(i2clist):
             scan[idx] = chip
-    conn.send(scan)
+    s.sendto(scan, cipv4)
     return None
 
 #==================================================================================#
 # CALIBRATION CURVE CODE
 #==================================================================================#
-
+"""
 def calibrate():
     global calibint
     #clearpin.value(1)
@@ -113,12 +122,12 @@ def calibrate():
 
 def cbcal(line):
     #adc.read_timed(data,t2)
-    conn.send(data)
+    s.sendto(data,cipv4)
     #clearpin.value(1)
     #clearpin.value(0)
     calibadc.read_timed(calibdata,t2)
-    conn.send(calibdata)
-
+    s.sendto(calibdata,cipv4)
+"""
 #==================================================================================#
 # RATE MEASUREMENT CODE
 #==================================================================================#
@@ -135,7 +144,7 @@ def rateaq():
     b = utime.ticks_ms()-a
     finalrate = round((ratecounter/(b/1000)))
     finalratebyte = finalrate.to_bytes(4,'little',False)
-    conn.send(finalratebyte)
+    s.sendto(finalratebyte,cipv4)
 
 def ratecount(line):
     global ratecounter
@@ -155,7 +164,7 @@ def ADCi():
     global extint
     global count
     count = 0
-    mnum = int.from_bytes(conn.recv(8),'little')
+    mnum = int.from_bytes(s.recv(8),'little')
     #t0 = int(utime.ticks_us())
     extint.enable()
     while count < mnum:
@@ -168,8 +177,8 @@ def callback(arg):
     adc.read_timed(data,ti)         # 4 microsecond measurement from ADC at X12,
     global count                    # reference the global count counter
 #    tim[:] = (int(utime.ticks_us() - t0)).to_bytes(4,'little')     # timestamp the pulse
-#    conn.send(tim)                 # send timestamp over socket
-    conn.send(data)                 # send adc sample over socket
+#    s.sendto(tim,cipv4)                 # sendto timestamp over socket
+    s.sendto(data,cipv4)                 # sendto adc sample over socket
     count+=1                 # pulse counter
     pyb.enable_irq(irqstate)
 
@@ -181,19 +190,20 @@ def cb(line):
 
 # ENABLE INTERRUPT CHANNELS
 irqstate=pyb.disable_irq()                  # disable all interrupts during initialisation
-calibint = ExtInt('X1',ExtInt.IRQ_RISING,
-    pyb.Pin.PULL_NONE,cbcal)                # calibration routine interrupts on pin X1
+#calibint = ExtInt('X1',ExtInt.IRQ_RISING,
+#    pyb.Pin.PULL_NONE,cbcal)                # calibration routine interrupts on pin X1
+#calibint.disable()
+
 extint = ExtInt('X2',ExtInt.IRQ_RISING,
     pyb.Pin.PULL_NONE,cb)                   # interrupts for ADC pulse DAQ on pin X2
+extint.disable()
 rateint = ExtInt('X4',ExtInt.IRQ_RISING,
     pyb.Pin.PULL_NONE,ratecount)            # interrupts to measure sample activity on pin X4
-
+rateint.disable()
 #irq = Pin('X2').irq(handler=cb,trigger=Pin.IRQ_RISING,priority=10, wake=None, hard=True)
 
 # disable each individually using extint for later enabling in the functions
-extint.disable()
-calibint.disable()
-rateint.disable()
+
 pyb.enable_irq(irqstate) # re-enable irqs
 
 #==================================================================================#
@@ -201,7 +211,7 @@ pyb.enable_irq(irqstate) # re-enable irqs
 #==================================================================================#
 
 def ADCwd():
-    conn.close()
+    s.close()
     AWD = adcwd.adcwdObj(0,200)
     AWD.start_peakfinding_udp(1000)
 
@@ -224,7 +234,7 @@ commands = {
     bytes(bytearray([4,0])) : lambda : polarpin.value(0),       # Negative polarity
     bytes(bytearray([4,1])) : lambda : polarpin.value(1),       # Positive polarity
 
-    bytes(bytearray([5,0])) : calibrate,           # measure detector/apic gain profile 
+    #bytes(bytearray([5,0])) : calibrate,           # measure detector/apic gain profile 
     bytes(bytearray([5,1])) : rateaq,              # measure sample rate
 
     bytes(bytearray([6,0])) : lambda: testpulsepin.value(0),    # disable test pulses
@@ -235,10 +245,6 @@ commands = {
 # MAIN LOOP
 #==================================================================================#
 while True:
-    try: 
-        mode = conn.recv(2)         # wait until the board receives the 2 byte command code, no timeout
-        commands[mode]()            # reference commands dictionary and run the corresponding function
-    except:
-        conn.close()
-        print("System Reset!")
-        machine.reset()
+    mode = s.recv(2)            # wait until the board receives the 2 byte command code, no timeout
+    print("MODE RECEIVED")
+    commands[mode]()            # reference commands dictionary and run the corresponding function

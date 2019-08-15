@@ -21,6 +21,7 @@ import json
 
 fp = open("APICconfig.json","r")            # load config file in rw mode
 default = json.load(fp)                     # load default settings dictionary
+fp.close()
 
 def setup_from_saved():
     ''' Write default settings to the pyboard. '''
@@ -30,7 +31,7 @@ def setup_from_saved():
     time.sleep(0.1)
     apic.drain_socket()
 
-apic = F.APIC('COM3',default['timeout'],("192.168.4.1",8080)) # connect to the APIC
+apic = F.APIC(default['timeout'],default['ipv4']) # connect to the APIC
 
 root = Tk()
 root.title('WAQ System')
@@ -95,12 +96,12 @@ def write1():
 # GAIN POT BUTTON
 W0B = Button(I2Cframe,text='Set Gain Value',command=write0).grid(row=1,column=4,rowspan=2)
 W0S = Scale(I2Cframe,orient=HORIZONTAL,tickinterval=32,resolution=1,
-    from_=1,to=256,length=300,variable=var0)
+    from_=0,to=255,length=300,variable=var0)
 W0S.grid(row=1,column=5,rowspan=2)
 # THRESHOLD POT BUTTON
 W1B = Button(I2Cframe,text='Set Width Value',command=write1).grid(row=3,column=4,rowspan=2)
 W1S = Scale(I2Cframe,orient=HORIZONTAL,tickinterval=32,resolution=1,
-    from_=1,to=256,length=300,variable=var1)
+    from_=0,to=255,length=300,variable=var1)
 W1S.grid(row=3,column=5,rowspan=2)
 
 #==================================================================================#
@@ -234,13 +235,26 @@ def disconnect():
 
 def savesettings():
     ''' Save updated config settings so that setup is preserved on restart. '''
+    fp = open("APICconfig.json","w")
+
+    default['calibgradient'] = 
+    default['timeout'] = apic.tout
+    default[''] =  
+    default[''] = 
+    default[''] = 
+
     json.dump(default,fp,indent=1)
-    
+    fp.close()
+
 def adcwd():
     apic.sendcmd(2,0)
     #progress['value'] = 0                   # reset progressbar
     #datapoints = int(numadc.get())          # get desired number of samples from the tkinter text entry
     apic.adcwd_test(100,progress,root)     # take data using ADCi protocol
+
+def sendtest():
+    apic.sendtset()
+
 
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
@@ -252,7 +266,7 @@ filemenu.add_command(label="Exit", command=root.quit)
 menubar.add_cascade(label="Menu", menu=filemenu)
 
 helpmenu = Menu(menubar, tearoff=0)
-helpmenu.add_command(label="About", command=adcwd)
+helpmenu.add_command(label="About", command=sendtest)
 menubar.add_cascade(label="Help", menu=helpmenu)
 
 root.config(menu=menubar)       # display menubar
