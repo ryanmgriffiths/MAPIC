@@ -10,22 +10,16 @@
 #include "adcwd.h"
 #include "pin.h"
 #include "portmodules.h"
-#include "modnetwork.h"
 #include "py/objtuple.h"
 #include "py/objlist.h"
 #include "py/stream.h"
 #include "py/mperrno.h"
+#include "py/objtuple.h"
 
-#include "lib/netutils/netutils.h"
 #include "lwip/tcp.h"
 #include "lwip/timeouts.h"
 #include "lwip/init.h"
-#include "lwip/init.h"
-#include "lwip/tcp.h"
 #include "lwip/udp.h"
-#include "lwip/raw.h"
-#include "lwip/dns.h"
-#include "lwip/igmp.h"
 
 /************************************************************
 *   CUSTOM MACROS
@@ -36,6 +30,7 @@
 #define pin_adc_table           pin_adc1
 #define clear_pin               (pyb_pin_X7)
 #define ADC_pin                 (pyb_pin_X12)
+#define MAX_PAYLOAD_SIZE        (1472)
 
 /************************************************************
 *   TCP SERVER SETUP CODE
@@ -49,6 +44,8 @@ enum tcp_server_states{
 };
 
 struct tcp_pcb *awdpcb;
+struct udp_pcb *udppcb;
+
 
 static err_t tcp_server_accept(void *arg, struct tcp_pcb *newpcb, err_t err);
 static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
@@ -126,6 +123,30 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *new , struct pbuf *p ,er
     printf("RECEIVED! %u bytes!\n", returned);
     return err;
 }
+
+/************************************************************
+ * UDP SEND PAYLOAD
+ * Send a payload to port 9000 through UDP
+************************************************************/
+
+static void adcwd_send_udp(struct udp_pcb *udppcb ,const u8_t* payload, ip_addr_t *dest_ip, u16_t port){
+    
+    struct pbuf *p;
+    
+    p = pbuf_alloc(PBUF_TRANSPORT, 50, PBUF_ROM);
+    
+    if (p!=NULL){
+        
+        pbuf_take(p, (char*)payload , 50);
+        
+        udp_sendto(udppcb, p, dest_ip, port);
+        
+        pbuf_free(p);
+
+    }
+}
+
+
 
 /************************************************************
  * PULSEPIN SETUP
@@ -338,13 +359,71 @@ STATIC mp_obj_t adcwd_start_peakfinding(mp_obj_t self_in, mp_obj_t samples){
 
 MP_DEFINE_CONST_FUN_OBJ_2(adcwd_start_peakfinding_obj, adcwd_start_peakfinding);
 
+
+STATIC mp_obj_t adcwd_start_peakfinding_udp(mp_obj_t self_in, mp_obj_t samples, mp_obj_t iptuple){
+
+    adcwd_adcwd_obj_t *self =  MP_OBJ_TO_PTR(self_in);
+    int num_samples = mp_obj_get_int(samples);
+    
+    mp_obj_tuple_t *ip = MP_OBJ_TO_PTR(iptuple);
+    
+    ip4_addr_t destip;
+    const char *ipstr  = mp_obj_str_get_str(ip->items[0]);
+    u16_t portno = mp_obj_get_int(ip->items[1]);
+    
+    ip4addr_aton(ipstr,&destip);
+
+    printf("%d", portno);
+    printf("%s", ipstr);
+    
+    /* CONST DEFINITIONS */
+    u8_t pld[100];
+    
+    int i;
+    for(i=0; i<100; i++){
+        pld[i] = 65;
+    }
+    
+    // INIT FIRST PCB OBJ
+    udppcb = udp_new();
+    
+    if (udppcb == NULL){
+        //mp_raise_OSError(-1);
+    }
+    else{
+        printf("passed!\n");
+    }    
+    
+    int cnt = 0;
+    while (cnt<5){
+        adcwd_send_udp(udppcb, pld, &destip, portno);
+        cnt++;
+    }
+
+
+    samplecounter = 0;
+
+    printf("Low to high-> %u to %u\n", self->threshold_low , self->threshold_high);
+    
+    //While loop for samples
+    while(samplecounter<num_samples){
+        ;
+    }    
+    return mp_const_none;
+
+}
+
+MP_DEFINE_CONST_FUN_OBJ_3(adcwd_start_peakfinding_udp_obj, adcwd_start_peakfinding_udp);
+
 /************************************************************
- * MICROPYTHON WRAPPER LINKING
+ * MICROPYTHON WRAPPER LINKING/CLASS CREATION
 ************************************************************/
 
 STATIC const mp_rom_map_elem_t adcwd_adcwd_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_start_peakfinding), MP_ROM_PTR(&adcwd_start_peakfinding_obj)}
+    { MP_ROM_QSTR(MP_QSTR_start_peakfinding), MP_ROM_PTR(&adcwd_start_peakfinding_obj)},
+    { MP_ROM_QSTR(MP_QSTR_start_peakfinding_udp), MP_ROM_PTR(&adcwd_start_peakfinding_udp_obj)}
 };
+
 STATIC MP_DEFINE_CONST_DICT(adcwd_adcwd_locals_dict,
                             adcwd_adcwd_locals_dict_table);
 
