@@ -33,6 +33,8 @@ def setup_from_saved():
 
 apic = F.APIC(default['timeout'],default['ipv4']) # connect to the APIC
 
+setup_from_saved()
+
 root = Tk()
 root.title('WAQ System')
 #root.wm_iconbitmap('dAPIC.bmp')
@@ -59,9 +61,9 @@ polarityframe.grid(row=5,column=4,rowspan=2)
 def read():
     try:
         apic.readI2C()
-        Ireadlabel.config(text='Gain: %i , Width: %i' % (apic.posGAIN,apic.posWIDTH))
+        Ireadlabel.config(text='Gain: %i , Threshold: %i' % (apic.posGAIN,apic.posTHRESH))
     except:
-        errorbox.config(text='Timeout')
+        errorbox.config(text='TIMEOUT')
 
 def scan():
     try:
