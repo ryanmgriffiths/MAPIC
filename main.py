@@ -90,7 +90,6 @@ def Iw(address):
     if i2c.is_ready(address):
         recvd = s.recv(1)
         value = int.from_bytes(recvd,'little',False)
-        print(recvd)
         b = bytearray([0x00,value])
         i2c.send(b,addr=address)
     else:
@@ -133,7 +132,7 @@ def cbcal(line):
 #==================================================================================#
 
 def rateaq():
-    print('started')
+    print('RATEON')
     global ratecounter
     global rateint
     ratecounter=0
