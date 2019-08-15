@@ -68,10 +68,19 @@ Then add the following code to setup up the module:
 
 
 ```c++
+/* Important includes */
 #include <stdio.h>
+#include <string.h>
+
+#include "py/nlr.h"
+#include "py/obj.h"
+#include "py/runtime.h"
+#include "py/binary.h"
+#include "portmodules.h"
+#include "py/mphal.h"           /* useful mphal macros here */
 
 /* Entry to the global table, first defines name of callable object */
-/* second entry is the */
+/* __name__ gives the module a name -> mymodule                     */
 STATIC const mp_map_elem_t mymodule_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_mymodule) },
 };
@@ -80,7 +89,7 @@ STATIC MP_DEFINE_CONST_DICT (
     mp_module_mymodule_globals,
     mymodule_globals_table
 );
-
+/* Creates the module and adds to globals */
 const mp_obj_module_t mp_module_mymodule = {
     .base = { &mp_type_module },
     .globals = (mp_obj_dict_t*)&mp_module_mymodule_globals,

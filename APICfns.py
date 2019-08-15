@@ -184,16 +184,21 @@ class APIC:
         ''' Save numpy data. '''
         numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
         #numpy.savetxt('timeirq.txt',times)
-        self.raw_dat_count+=1                               # new file version number
+        self.raw_dat_count+=1                                   # new file version number
     
     def adcwd_test(self,datpts,progbar,rootwin):
         '''INIT NEW SOCKET & TAKE DATA FROM BOARD!'''
         sock1 = socket.socket(socket.AF_INET
-            ,socket.SOCK_DGRAM)                                # reinit socket object
-        sock1.settimeout(10)                                # set timeout -> default this
-        sock1.connect(("192.168.4.1",9000))                # init reconnection, new port
-        testdat = sock1.recvfrom(1)
-        print(testdat)
+            ,socket.SOCK_DGRAM)                                 # reinit socket object
+        sock1.settimeout(1)                                     # set timeout -> default this
+        #sock1.connect(("192.168.4.1",9000))                     # init reconnection, new port
+        sock1.bind(('', 9000))
+        while True:
+            try:
+                testdat = sock1.recvfrom(2048)
+                print("Success")
+            except:
+                print("Nothing")
 
         #self.samples = datpts                                   # number of samples class var
         #progbar['maximum'] = datpts                             # update progress bar max value
