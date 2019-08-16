@@ -20,22 +20,24 @@ class APIC:
     requests to the board and manage communication over the network socket. I.e. control the board from the PC with this class.'''
     def __init__(self,tout,ipv4):   # intialise connection variables.
         
-        self.tout = tout                    # timeout for both serial and socket connections in seconds.
-        self.ipv4 = tuple(ipv4)                    # tuple of IP string and port e.g. ('123.456.78.9',1234) (see readme & socket)
+        self.tout = tout                            # timeout for both serial and socket connections in seconds.
+        self.ipv4 = tuple(ipv4)                     # tuple of IP string and port e.g. ('123.456.78.9',1234) (see readme & socket)
         
-        
+        # SOCKET OPERATIONS
         self.sock = socket.socket(socket.AF_INET
-            ,socket.SOCK_DGRAM)             # init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
-        self.sock.settimeout(tout)          # set socket timeout setting
+            ,socket.SOCK_DGRAM)                     # init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
+        self.sock.settimeout(tout)                  # set socket timeout setting
         self.sock.bind(('',8080))
         self.polarity = default['polarity']
 
         # SET FILE NUMBERS FOR DATA SAVING
-        self.raw_dat_count = 0              #  counter for the number of raw data files
+        self.raw_dat_count = 0                      #  counter for the number of raw data files
         self.calibgradient = default['calibgradient']
         self.caliboffset = default['caliboffset']
         self.samples=100
         self.savemode = default['savemode']
+        self.STATE = ""
+        self.errorstatus = ""
 
         # Find the number of relevant files currently in the data directory, select file version number.
         for datafile in os.listdir('histdata'):
@@ -72,13 +74,30 @@ class APIC:
         \t b: second command byte for subsection.'''
         self.sock.sendto(bytearray([a,b]),self.ipv4)
 
-    def sendtset(self):
-        self.sendcmd(8,8)
+    #===================================================================================================
+    # STATE OPERATIONS
+    #===================================================================================================
     
+    def checkstate(self):
+        self.sendcmd(7,0)
+        print(self.sock.recv(32).decode('utf-8'))
+        
+    def sendstate(self, statestr):
+        if isinstance(statestr,str):    
+            self.sendcmd(7,1)
+            self.sock.sendto(statestr.encode('utf-8'),self.ipv4)
+            self.STATE = statestr
+        else:
+            self.errorstatus = "ERROR: Expected String"
+
     def disconnect(self):
         ''' Disconnect the socket.'''
         self.sock.close()
-
+    
+    #===================================================================================================
+    # I2C OPERATIONS
+    #===================================================================================================
+    
     def scanI2C(self):
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.\n
         Takes no arguments but stores received addresses as a list object self.I2Caddrs.'''
@@ -159,7 +178,11 @@ class APIC:
 
         self.outputpulses = self.mV(numpy.array(self.outputpulses))
         self.inputpulses = self.mV(numpy.array(self.inputpulses))
-
+    
+    #===================================================================================================
+    # ADC DAQ OPERATIONS
+    #===================================================================================================
+    
     def ADCi(self,datpts,progbar,rootwin):
 
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples,\n 
