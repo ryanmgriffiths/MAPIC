@@ -44,16 +44,18 @@ root.title('WAQ System')
 #root.wm_iconbitmap('dAPIC.bmp')
 
 I2Cframe = LabelFrame(root,text='I2C Digital Potentiometer Control')
-I2Cframe.grid(row=1,column=1,columnspan=6,rowspan=4)
+I2Cframe.grid(row=1,column=1,columnspan=5,rowspan=4)
 
 ADCframe = LabelFrame(root,text='DAQ')
-ADCframe.grid(row=5,column=1,columnspan=3,rowspan=3,sticky=W)
+ADCframe.grid(row=5,column=1,columnspan=3,rowspan=2,sticky=W)
 
 diagnostic = LabelFrame(root,text='Calibration Tools')
 diagnostic.grid(row=5,column=5,rowspan=2,columnspan=2)
 
 polarityframe = LabelFrame(root,text='Polarity Switch.')
 polarityframe.grid(row=5,column=4,rowspan=2)
+
+histframe = LabelFrane
 
 #==================================================================================#
 # I2C TOOLS FRAME:
@@ -74,18 +76,7 @@ def scan():
         apic.scanI2C()      
         Iscanlabel.config(text=str(apic.I2Caddrs))
     except:
-        errorbox.config(text='Timeout')
-
-# Widget definitions and placement
-Iread = Button(I2Cframe,text='Potentiometer Values',command=read).grid(row=1,column=1)
-Ireadlabel = Label(I2Cframe,text='---')
-Ireadlabel.grid(row=2,column=1)
-
-Iscan = Button(I2Cframe,text='I2C Addresses',command=scan).grid(row=3,column=1)
-Iscanlabel = Label(I2Cframe,text='---',bd=10)
-Iscanlabel.grid(row=4,column=1)
-
-divide = Label(I2Cframe,text='                ').grid(row=1,column=2,rowspan=6,columnspan=2)
+        errorbox.config(text='TIMEOUT')
 
 # Define int variables for the widgets to reference
 var0 = IntVar()
@@ -96,28 +87,47 @@ def write0():
     apic.writeI2C(gain,0)       # call the write function with this value
 
 def write1():
-    width = var1.get()
-    apic.writeI2C(width,1)
+    threshold = var1.get()
+    apic.writeI2C(threshold,1)
+
+# Widget definitions and placement
+Iread = Button(I2Cframe,text='POTENTIOMETER VALS',command=read).grid(row=1,column=1)
+
+Ireadlabel = Label(I2Cframe,text='---')
+Ireadlabel.grid(row=2,column=1)
+
+Iscan = Button(I2Cframe,text='I2C ADDRESS LIST',command=scan).grid(row=3,column=1)
+
+Iscanlabel = Label(I2Cframe,text='---',bd=10)
+Iscanlabel.grid(row=4,column=1)
 
 # GAIN POT BUTTON
-W0B = Button(I2Cframe,text='Set Gain Value',command=write0).grid(row=1,column=4,rowspan=2)
+W0B = Button(I2Cframe,text='SET GAIN',command=write0).grid(row=1,column=5,sticky=W)
+
 W0S = Scale(I2Cframe,orient=HORIZONTAL,tickinterval=32,resolution=1,
     from_=0,to=255,length=300,variable=var0)
-W0S.grid(row=1,column=5,rowspan=2)
+W0S.grid(row=1,column=3,columnspan=2)
+
 # THRESHOLD POT BUTTON
-W1B = Button(I2Cframe,text='Set Width Value',command=write1).grid(row=3,column=4,rowspan=2)
+W1B = Button(I2Cframe,text='SET THRESHOLD',command=write1).grid(row=3,column=5, sticky=W)
+
 W1S = Scale(I2Cframe,orient=HORIZONTAL,tickinterval=32,resolution=1,
     from_=0,to=255,length=300,variable=var1)
-W1S.grid(row=3,column=5,rowspan=2)
+W1S.grid(row=3,column=3,columnspan=2)
+
+div = Label(I2Cframe, text='           ').grid(row=1,column=2,rowspan=4)
 
 #==================================================================================#
 # ADC CONTROL FRAME
+# GRID: 2R 3C
 #==================================================================================#
 numadc=StringVar()
 
 def ADCi():
+    apic.drain_socket()
     progress['value'] = 0                   # reset progressbar
     datapoints = int(numadc.get())          # get desired number of samples from the tkinter text entry
+    
     apic.ADCi(datapoints,progress,root)     # take data using ADCi protocol
     adcidata = apic.mV(apic.data)
     
@@ -138,9 +148,8 @@ def ADCi():
     # add the plot to the gui
     bar1 = FigureCanvasTkAgg(histogram, root)   
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
-    
     apic.drain_socket()                     # drain socket to clear interrupt overflows
-    
+
 # Add ADC frame widgets
 ADCi_label = Label(ADCframe, text='Interrupt Samples:')
 ADCi_label.grid(row=1,column=1)
@@ -151,11 +160,12 @@ ADCi_entry.grid(row=1,column=2)
 ADC_out = Button(ADCframe, command=ADCi,text='Start')#,state=DISABLED)
 ADC_out.grid(row=1,column=3)
 
-progress = ttk.Progressbar(ADCframe,value=0,maximum=apic.samples,length=300) # add a progress bar
+progress = ttk.Progressbar(ADCframe,value=0,maximum=apic.samples,length=350) # add a progress bar
 progress.grid(row=2,column=1,columnspan=3)
 
 #==================================================================================#
 # POLARITY FRAME
+# GRID: 2r 1c
 #==================================================================================#
 POL = IntVar()
 
@@ -164,10 +174,10 @@ def pselect():
 
 # Add polarity widgets
 ppolarity = Radiobutton(polarityframe,command=pselect,text='Positive',value=1,variable=POL)
-ppolarity.grid(row=2,column=5,sticky=W)
+ppolarity.grid(row=1,column=1,sticky=W)
 
 npolarity = Radiobutton(polarityframe,command=pselect,text='Negative',value=0,variable=POL)
-npolarity.grid(row=3,column=5,sticky=W)
+npolarity.grid(row=2,column=1,sticky=W)
 
 #==================================================================================#
 # CALIBRATION FRAME
@@ -208,7 +218,6 @@ def calibrate():
 
 def rateaq():
     ''' Acquire the rate of the source. '''
-    apic.drain_socket()
     rate = apic.rateaq()
     ratelabel.config(text=str(rate)+'Hz')
     apic.drain_socket()
