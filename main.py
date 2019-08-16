@@ -62,7 +62,6 @@ wl_ap.active(1)                         # enable the AP
 while wl_ap.status('stations')==[]:
     utime.sleep(1)
 
-utime.sleep(2)
 
 print("CONNECTION RECEIVED")
 
@@ -193,7 +192,7 @@ def ADCi():
     count = 0
     
     utime.sleep(0.5)
-    print("MESSAGE RECV NOW")
+    print("ADCI INIT")
     
     msg, addr = s.recvfrom(8)
     mnum = int.from_bytes(msg,'little')
@@ -207,7 +206,7 @@ def ADCi():
         pass
     
     extint.disable()
-    print("ADCI DONE")
+    print("ADCI MEASUREMENT COMPLETE")
     drain_socket()
 
 # ISR CALLBACK FUNCTION
@@ -254,8 +253,6 @@ extint.disable()
 rateint = ExtInt('X4',ExtInt.IRQ_RISING,
     pyb.Pin.PULL_NONE,ratecount)            # interrupts to measure sample activity on pin X4
 rateint.disable()
-
-# disable each individually using extint for later enabling in the functions
 
 pyb.enable_irq(irqstate) # re-enable irqs
 
