@@ -32,6 +32,9 @@ def setup_from_saved():
     apic.setpolarity(setpolarity=default['polarity'])
     apic.drain_socket()
 
+def checkerror():
+    errorbox.config(text=apic.errorstatus)
+
 apic = F.APIC(default['timeout'],default['ipv4']) # connect to the APIC
 
 setup_from_saved()
