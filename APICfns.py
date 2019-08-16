@@ -6,6 +6,7 @@ import datetime     # for measuring rates
 import numpy
 import os           # OS implementation for file saving
 import json
+from array import array
 from tkinter import *
 import tkinter.ttk as ttk
 import time
@@ -27,6 +28,7 @@ class APIC:
             ,socket.SOCK_DGRAM)             # init socket obj in AF_INET (IPV4 addresses only) mode and send/receive data.
         self.sock.settimeout(tout)          # set socket timeout setting
         self.sock.bind(('',8080))
+        self.polarity = default['polarity']
 
         # SET FILE NUMBERS FOR DATA SAVING
         self.raw_dat_count = 0              #  counter for the number of raw data files
@@ -101,10 +103,11 @@ class APIC:
         time.sleep(0.5)
         self.sock.sendto(bytearray([pos]),self.ipv4)
 
-    def polarity(self,polarity=1):
+    def setpolarity(self,setpolarity=1):
         '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
-        self.sendcmd(4,polarity)
-           
+        self.sendcmd(4,setpolarity)
+        self.polarity= setpolarity
+
     def mV(self, adc_counts):
         '''Convert ADC counts to millivolts. Returns converted data.\n
         self.mV(adc_counts)\n
@@ -170,24 +173,30 @@ class APIC:
         self.samples = datpts                                   # update samples item
         progbar['maximum'] = datpts                             # update progress bar max value
         rootwin.update_idletasks()                              # force tkinter to refresh
-        readm = bytearray(8)                                    # Bytearray for receiving ADC data (with no mem allocation)
-
-        self.data = numpy.zeros((datpts,4),dtype='uint16')      # ADC values numpy array
+        readm = array("H",[0]*500)                               # Bytearray for receiving ADC data (with no mem allocation)
+        print("DEBUG1")
+        self.data = array("H",[])                               # ADC values numpy array
         datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
-        percent = datpts/100                                    # val of 1% of datpts
-        self.sendcmd(2,1)                                       # Send byte command
+        totalsamples = datpts/100                                    # val of 1% of datpts
+        
+        print(self.sock.gettimeout())
+        self.sendcmd(2,1)
+        time.sleep(0.5)                                       # Send byte command
         self.sock.sendto(datptsb,self.ipv4)                                 # send num if data points to sample
-
+        
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
-        for x in range(datpts):
+        while len(self.data)<datpts:
             self.sock.recv_into(readm)
-            self.data[x,:] = numpy.frombuffer(readm,dtype='uint16')
-            if x%percent==0:
-                progbar['value'] = x                            # update the progress bar value
-                rootwin.update()                                # force tkinter to update - non-ideal solution
+            self.data.extend(readm)
+            #if x%percent==0:
+            #    progbar['value'] = x                            # update the progress bar value
+            #    rootwin.update()                                # force tkinter to update - non-ideal solution
         
         # Save and return the arrays.
+        self.data = numpy.array(self.data)
+        self.data.shape = (int(len(self.data)/4), 4)
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections        
+        print(self.data.shape)
     
     def savedata(self,data):
         ''' Save numpy data. '''
@@ -204,7 +213,7 @@ class APIC:
         sock1.bind(('', 9000))
         for x in range(10):
             try:
-                testdat = sock1.recvfrom(2048)
+                testdat = sock1.recvfrom(500)
                 print("Success")
             except:
                 print("Nothing")
