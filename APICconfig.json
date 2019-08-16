@@ -12,5 +12,6 @@
  "calibgradient": 1,
  "caliboffset": 0,
  "bins": 256,
- "polarity": 1
+ "polarity": 1,
+ "units" : "mV", 
 }
