@@ -55,7 +55,8 @@ diagnostic.grid(row=5,column=5,rowspan=2,columnspan=2)
 polarityframe = LabelFrame(root,text='Polarity Switch.')
 polarityframe.grid(row=5,column=4,rowspan=2)
 
-histframe = LabelFrane
+histframe = LabelFrame(root, text='Graph Config')
+histframe.grid(row=7,column=1, columnspan=4,rowspan=4,sticky=NW)
 
 #==================================================================================#
 # I2C TOOLS FRAME:
@@ -91,25 +92,29 @@ def write1():
     apic.writeI2C(threshold,1)
 
 # Widget definitions and placement
-Iread = Button(I2Cframe,text='POTENTIOMETER VALS',command=read).grid(row=1,column=1)
+Iread = Button(I2Cframe,text='POTENTIOMETER VALS',command=read, width=18)
+Iread.grid(row=1,column=1)
 
 Ireadlabel = Label(I2Cframe,text='---')
 Ireadlabel.grid(row=2,column=1)
 
-Iscan = Button(I2Cframe,text='I2C ADDRESS LIST',command=scan).grid(row=3,column=1)
+Iscan = Button(I2Cframe,text='I2C ADDRESS LIST',command=scan,width=18)
+Iscan.grid(row=3,column=1)
 
 Iscanlabel = Label(I2Cframe,text='---',bd=10)
 Iscanlabel.grid(row=4,column=1)
 
 # GAIN POT BUTTON
-W0B = Button(I2Cframe,text='SET GAIN',command=write0).grid(row=1,column=5,sticky=W)
+W0B = Button(I2Cframe,text='SET GAIN',command=write0, width=15)
+W0B.grid(row=1,column=5,sticky=W)
 
 W0S = Scale(I2Cframe,orient=HORIZONTAL,tickinterval=32,resolution=1,
     from_=0,to=255,length=300,variable=var0)
 W0S.grid(row=1,column=3,columnspan=2)
 
 # THRESHOLD POT BUTTON
-W1B = Button(I2Cframe,text='SET THRESHOLD',command=write1).grid(row=3,column=5, sticky=W)
+W1B = Button(I2Cframe,text='SET THRESHOLD',command=write1, width=15)
+W1B.grid(row=3,column=5, sticky=W)
 
 W1S = Scale(I2Cframe,orient=HORIZONTAL,tickinterval=32,resolution=1,
     from_=0,to=255,length=300,variable=var1)
@@ -129,23 +134,28 @@ def ADCi():
     datapoints = int(numadc.get())          # get desired number of samples from the tkinter text entry
     
     apic.ADCi(datapoints,progress,root)     # take data using ADCi protocol
-    adcidata = apic.mV(apic.data)
     
+    
+    apic.data = apic.setunits(apic.data, default['units'])
+    
+    global histogram
     histogram = plt.Figure(dpi=100)
-    global ax1                              # allow changes to ax1 outside of ADCi()
+    global ax1
     ax1 = histogram.add_subplot(111)
-    hdat = numpy.average(adcidata,axis=1)   # average the ADC peak data over the columns
-    hdat = hdat[hdat>0]                     # remove zeros
+    
+    apic.hdat = numpy.average(apic.data, axis=1)   # average the ADC peak data over the columns
+    apic.hdat = apic.hdat[apic.hdat>0]                # remove zeros (controvertial feature)
     
     # set titles and axis labels
-    ax1.hist(hdat,default['bins'],color='b',edgecolor='black')
+    ax1.hist(apic.hdat,default['bins'],color='b', edgecolor='black')
     ax1.set_title(default['title'])
-    ax1.set_xlabel('APIC output (V)')
-    ax1.set_ylabel('Counts')
+    ax1.set_xlabel(default['xlabel'])
+    ax1.set_ylabel(default['ylabel'])
     
     #plt.savefig('histdata\histogram'+str(apic.raw_dat_count)+'.png')
     
     # add the plot to the gui
+    global bar1
     bar1 = FigureCanvasTkAgg(histogram, root)   
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
     apic.drain_socket()                     # drain socket to clear interrupt overflows
@@ -157,7 +167,7 @@ ADCi_label.grid(row=1,column=1)
 ADCi_entry = Entry(ADCframe,textvariable=numadc)
 ADCi_entry.grid(row=1,column=2)
 
-ADC_out = Button(ADCframe, command=ADCi,text='Start')#,state=DISABLED)
+ADC_out = Button(ADCframe, command=ADCi,text='Start',width=10)#,state=DISABLED)
 ADC_out.grid(row=1,column=3)
 
 progress = ttk.Progressbar(ADCframe,value=0,maximum=apic.samples,length=350) # add a progress bar
@@ -180,12 +190,72 @@ npolarity = Radiobutton(polarityframe,command=pselect,text='Negative',value=0,va
 npolarity.grid(row=2,column=1,sticky=W)
 
 #==================================================================================#
+# HISTOGRAM FRAME
+#==================================================================================#
+
+titlestr = StringVar()
+xstr = StringVar()
+ystr = StringVar()
+cbins = StringVar()
+unitvar = StringVar()
+
+def set_t():
+    ax1.cla()
+    ax1.set_title(titlestr.get())
+    ax1.set_xlabel(xstr.get())
+    apic.title = titlestr.get()
+    apic.xlabel = xstr.get()+unitvar.get()
+    apic.ylabel = ystr.get()
+    apic.bins = int(cbins.get())
+    ax1.set_ylabel(ystr.get())
+    print(unitvar.get())
+    apic.hdat = apic.setunits(apic.hdat,unitvar.get())
+    ax1.hist(apic.hdat, int(cbins.get()), color='b', edgecolor='black')
+    
+    bar1 = FigureCanvasTkAgg(histogram, root)   
+    bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
+
+ewidth = 30
+t_entr = Entry(histframe, textvariable = titlestr, width =ewidth)
+t_entr.grid(row=1,column=2,columnspan=2)
+x_entr = Entry(histframe, textvariable = xstr, width = ewidth)
+x_entr.grid(row=2,column=2,columnspan=2)
+y_entr = Entry(histframe, textvariable = ystr,width = ewidth)
+y_entr.grid(row=3,column=2,columnspan=2)
+bins_entr = Entry(histframe,textvariable = cbins,width = ewidth)
+bins_entr.grid(row=4,column=2, columnspan=2)
+
+t_entr.insert([0],default['title'])
+x_entr.insert([0],default['xlabel']+default['units'])
+y_entr.insert([0], default['ylabel'])
+bins_entr.insert([0], default['bins'])
+
+mvbutton = Radiobutton(histframe,text='mV',value='mV',variable=unitvar)
+mvbutton.grid(row=1,column=4,sticky=W)
+adubutton = Radiobutton(histframe,text='ADU',value='ADU',variable=unitvar)
+adubutton.grid(row=2,column=4,sticky=W)
+
+setbutton = Button(histframe, text='SET', command=set_t, width = 5)
+setbutton.grid(row=3,column=4)
+
+t_label = Label(histframe, text = 'TITLE:')
+t_label.grid(row=1,column=1,sticky=W)
+x_label = Label(histframe, text = 'X AXIS:')
+x_label.grid(row=2,column=1,sticky=W)
+y_label = Label(histframe, text = 'Y AXIS:')
+y_label.grid(row=3,column=1,sticky=W)
+bins_label = Label(histframe, text= 'BINS:')
+bins_label.grid(row=4,column=1,sticky=W)
+
+
+
+#==================================================================================#
 # CALIBRATION FRAME
 #==================================================================================#
 
 errorbox = Message(root,text='Error messages.',
     bg='white',relief=RIDGE,width=220)
-errorbox.grid(row=10,column=1,columnspan=6)
+errorbox.grid(row=7,column=5,columnspan=3)
 
 def f(x,a,b,c):
     ''' Second order tranfer function to fit to pulse strecher input/output curve.\n
@@ -222,12 +292,12 @@ def rateaq():
     ratelabel.config(text=str(rate)+'Hz')
     apic.drain_socket()
 
-calibration = Button(diagnostic,text='Gain Calibration',
-    command=calibrate)
+calibration = Button(diagnostic,text='CALIBRATE GAIN',
+    command=calibrate, width = 14)
 calibration.grid(row=1,column=1,sticky=W)
 
-ratebutton = Button(diagnostic,text='Rate'
-    ,command = rateaq)
+ratebutton = Button(diagnostic,text='MEASURE RATE'
+    ,command = rateaq, width = 14)
 ratebutton.grid(row=2,column=1,sticky=W)
 
 ratelabel = Label(diagnostic,text='---')
@@ -263,6 +333,12 @@ def savesettings():
     default['threshpos'] = apic.posTHRESH
     default['savemode'] = apic.savemode
     default['polarity'] = apic.polarity
+    default['units'] = apic.units
+    default['title'] = apic.title
+    default['xlabel'] = apic.xlabel
+    default['ylabel'] = apic.ylabel
+    default['bins'] = apic.bins
+    
 
     json.dump(default,fp,indent=1)
     fp.close()
