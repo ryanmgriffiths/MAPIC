@@ -11,5 +11,6 @@
  "title": "Fe-55 Energy Spectrum",
  "calibgradient": 1,
  "caliboffset": 0,
- "bins": 256
+ "bins": 256,
+ "polarity": 1
 }
