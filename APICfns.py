@@ -30,7 +30,7 @@ class APIC:
         self.sock.bind(('',8080))
         self.polarity = default['polarity']
 
-        # SET FILE NUMBERS FOR DATA SAVING
+        # DATA STORAGE AND VARIABLES
         self.raw_dat_count = 0                      #  counter for the number of raw data files
         self.calibgradient = default['calibgradient']
         self.caliboffset = default['caliboffset']
@@ -38,7 +38,11 @@ class APIC:
         self.savemode = default['savemode']
         self.STATE = ""
         self.errorstatus = ""
-
+        self.units = "ADU"
+        self.hdat = numpy.array([])
+        self.title = ""
+        self.posGain = default['gainpos']
+        self.posTHRESH = default['threshpos']
         # Find the number of relevant files currently in the data directory, select file version number.
         for datafile in os.listdir('histdata'):
             if datafile.startswith('datairq'):
@@ -46,7 +50,7 @@ class APIC:
             else:
                 pass
         
-        #self.ser = serial.Serial(address,115200,timeout=tout)          # connect to the serial port & init serial obj.
+        #self.ser = serial.Serial(address,115200,timeout=tout)          # connect to the serial port & init serial obj (legacy behaviour)
 
     def createfileno(self,fncount):
         '''A function that is used to create the 4 digit file number endings based on latest version'''
@@ -137,13 +141,17 @@ class APIC:
         
         self.sendcmd(4,setpolarity)
         self.polarity= setpolarity
-
-    def mV(self, adc_counts):
-        '''Convert ADC counts to millivolts. Returns converted data.\n
-        self.mV(adc_counts)\n
-        \t adc_counts: array or single value of adc counts to convert '''
-        return adc_counts*(3300/4096)
     
+    def setunits(self,data,_units):
+        if self.units == _units:
+            return data
+        elif self.units != _units and _units == 'mV':
+            self.units = 'mV'
+            return data*(3300/4096)
+        elif self.units != _units and _units == 'ADU':
+            self.units = 'ADU'
+            return data/(3300/4096)
+
     def curvecorrect(self, Input):
         return ((Input + self.caliboffset)/self.calibgradient)
 
@@ -164,6 +172,7 @@ class APIC:
         self.shapergain(shapeV)\n\n
         \t shapeV: voltage data (numpy array type) from the shaper.'''
         shapergain = 0.0375*numpy.exp(4.4156*shapeV)
+        
         return shapergain
 
     def calibration(self):
@@ -192,15 +201,14 @@ class APIC:
                 print('Socket timeout!')
                 break
 
-        self.outputpulses = self.mV(numpy.array(self.outputpulses))
-        self.inputpulses = self.mV(numpy.array(self.inputpulses))
+        self.outputpulses = self.setunits(numpy.array(self.outputpulses),'mV')
+        self.inputpulses = self.setunits(numpy.array(self.inputpulses), 'mV')
     
     #===================================================================================================
     # ADC DAQ OPERATIONS
     #===================================================================================================
     
     def ADCi(self,datpts,progbar,rootwin):
-
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples,\n 
         returns arrays of 1) 8 samples of peaks in ADC counts and times at the end of each peak in microseconds\n
         from the start of the experiment.\n
@@ -208,43 +216,39 @@ class APIC:
         \t datpts: 64bit number for desired number of ADC samples\n
         \t progbar: progressbar widget variable\n
         \t rootwin: tkinter.TK() object (root frame/window object)'''
-
+        
+        tick_count = 0
         self.samples = datpts                                   # update samples item
-        progbar['maximum'] = datpts                             # update progress bar max value
+        print(datpts)
+        progbar['maximum'] = int((4*datpts)/500)                    # update progress bar max value
         rootwin.update_idletasks()                              # force tkinter to refresh
-        readm = array("H",[0]*500)                               # Bytearray for receiving ADC data (with no mem allocation)
-        print("DEBUG1")
+        
+        readm = array("H",[0]*500)                              # Bytearray for receiving ADC data (with no mem allocation)
         self.data = array("H",[])                               # ADC values numpy array
         datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
-        totalsamples = datpts/100                                    # val of 1% of datpts
-        
+
         print(self.sock.gettimeout())
         self.sendcmd(2,1)
-        time.sleep(0.5)                                       # Send byte command
-        self.sock.sendto(datptsb,self.ipv4)                                 # send num if data points to sample
+        time.sleep(0.5)                                         # Send byte command
+        self.sock.sendto(datptsb,self.ipv4)                     # send num if data points to sample
         
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
         while int(len(self.data)/4) < datpts:
             
             self.sock.recv_into(readm)
+            tick_count+=1
             self.data.extend(readm)
-            #if x%percent==0:
-            #    progbar['value'] = x                            # update the progress bar value
-            #    rootwin.update()                                # force tkinter to update - non-ideal solution
+            progbar['value'] = tick_count                       # update the progress bar value
+            rootwin.update()                                    # force tkinter to update - non-ideal solution
         
         # Save and return the arrays.
-        
         self.data = numpy.array(self.data)
         self.data.shape = (int(len(self.data)/4), 4)
-        self.data = self.curvecorrect(self.data)                # apply linear fit corrections        
-        
-        print(self.data.shape)
-        print(self.data)
+        self.data = self.curvecorrect(self.data)                # apply linear fit corrections
     
     def savedata(self,data):
         ''' Save numpy data. '''
         numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
-        #numpy.savetxt('timeirq.txt',times)
         self.raw_dat_count+=1                                   # new file version number
     
     def adcwd_test(self,datpts,progbar,rootwin):
@@ -254,6 +258,7 @@ class APIC:
         sock1.settimeout(1)                                     # set timeout -> default this
         #sock1.connect(("192.168.4.1",9000))                     # init reconnection, new port
         sock1.bind(('', 9000))
+        
         for x in range(10):
             try:
                 testdat = sock1.recvfrom(500)
@@ -273,5 +278,3 @@ class APIC:
         # add a for loop for data transfer, long timeout.
         testdat = self.sock1.recv(1)
         print(testdat)"""
-
- 
