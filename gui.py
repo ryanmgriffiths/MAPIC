@@ -29,6 +29,7 @@ def setup_from_saved():
     time.sleep(0.1)
     apic.writeI2C(default['threshpos'],1)
     time.sleep(0.1)
+    apic.setpolarity(setpolarity=default['polarity'])
     apic.drain_socket()
 
 apic = F.APIC(default['timeout'],default['ipv4']) # connect to the APIC
@@ -156,7 +157,7 @@ progress.grid(row=2,column=1,columnspan=3)
 POL = IntVar()
 
 def pselect():
-    apic.polarity(polarity=POL.get())
+    apic.setpolarity(setpolarity=POL.get())
 
 # Add polarity widgets
 ppolarity = Radiobutton(polarityframe,command=pselect,text='Positive',value=1,variable=POL)
@@ -235,6 +236,10 @@ def connect():
 def disconnect():
     apic.sock.close()
 
+def quit():
+    apic.sock.close()
+    root.quit()
+
 def savesettings():
     ''' Save updated config settings so that setup is preserved on restart. '''
     
@@ -245,6 +250,7 @@ def savesettings():
     default['gainpos'] = apic.posGAIN
     default['threshpos'] = apic.posTHRESH
     default['savemode'] = apic.savemode
+    default['polarity'] = apic.polarity
 
     json.dump(default,fp,indent=1)
     fp.close()
@@ -262,7 +268,7 @@ filemenu.add_command(label='Save', command=savesettings)
 filemenu.add_command(label="Connect", command=connect)
 filemenu.add_command(label="Disconnect", command=disconnect)
 filemenu.add_separator()
-filemenu.add_command(label="Exit", command=root.quit)
+filemenu.add_command(label="Exit", command=quit)
 menubar.add_cascade(label="Menu", menu=filemenu)
 
 helpmenu = Menu(menubar, tearoff=0)
