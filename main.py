@@ -53,7 +53,6 @@ count=0                                 # counter for pulses read
 ratecounter = 0                         # counter for rate measurements
 STATE = "STARTUP"                       # state variable for applying startup settings etc. 
 
-
 # SET UP WIRELESS ACCESS POINT
 wl_ap = network.WLAN(1)                 # init wlan object
 wl_ap.config(essid='PYBD')              # set AP SSID
@@ -80,10 +79,13 @@ print("SOCKET BOUND")
 #==================================================================================#
 
 def checkstate():
-    
-    s.sendto()
 
+    a = STATE.encode('utf-8')
+    s.sendto(a, cipv4)
 
+def setstate():
+    utime.sleep(0.1)
+    STATE = s.recv(32).decode('utf-8')
 
 #==================================================================================#
 # I2C CONTROL
