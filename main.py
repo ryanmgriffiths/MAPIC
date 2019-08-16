@@ -79,13 +79,21 @@ print("SOCKET BOUND")
 #==================================================================================#
 
 def checkstate():
-
     a = STATE.encode('utf-8')
     s.sendto(a, cipv4)
 
 def setstate():
     utime.sleep(0.1)
     STATE = s.recv(32).decode('utf-8')
+
+def drain_socket():
+    s.settimeout(0)
+    while True:
+        try:
+            s.recv(2048)
+        except:
+            break
+    s.settimeout(None)
 
 #==================================================================================#
 # I2C CONTROL
@@ -147,15 +155,19 @@ def cbcal(line):
 #==================================================================================#
 
 def rateaq():
-    print('RATEON')
+
+    print('COUNTING RATE')
     global ratecounter
     global rateint
+
     ratecounter=0
     a=utime.ticks_ms()
     rateint.enable()
     utime.sleep(3)
     rateint.disable()
+    
     b = utime.ticks_ms()-a
+    
     finalrate = round((ratecounter/(b/1000)))
     finalratebyte = finalrate.to_bytes(4,'little',False)
     s.sendto(finalratebyte,cipv4)
@@ -196,28 +208,23 @@ def ADCi():
     
     extint.disable()
     print("ADCI DONE")
+    drain_socket()
 
 # ISR CALLBACK FUNCTION
 def callback(arg):
     
-    #irqstate = pyb.disable_irq()
     extint.disable()
-    
     global count                    # reference the global count counter
-    
     adc.read_timed(data,ti)         # 4 microsecond measurement from ADC at X12,
     
     pos = (4*count)%500
     
     if pos == 124:
-        
         sendbuf[pos:pos+4] = data
-
-        print(sendbuf)
         
         try:
             s.sendto(sendbuf, cipv4)
-        
+    
         except:
             print("SEND FAILED")
     
@@ -226,10 +233,7 @@ def callback(arg):
         sendbuf[pos:pos+4] = data
     
     count+=1                        # pulse counter
-
     extint.enable()
-
-    #pyb.enable_irq(irqstate)
 
 # TEMP FIX FOR ISR OVERFLOW
 # Uses micropython.schedule to delay interrupts

@@ -50,20 +50,24 @@ class APIC:
 
     def createfileno(self,fncount):
         '''A function that is used to create the 4 digit file number endings based on latest version'''
+        
         fncount=str(fncount)                        # int fncount to string
         fnstring = list('0000')                     # convert to mutable list
         fnstring[-len(fncount):] = list(fncount)    # replace last x terms with new version
+        
         return ''.join(fnstring)
     
     def drain_socket(self):
         '''Empty socket of any interrupt overflow data, call after every instance of interrupt usage.\n
         Reset timeout to 10s after each call.'''
         self.sock.settimeout(0)     # set timeout 0
+        
         while True:
             try:
                 self.sock.recv(2)   # read 2 byte chunks until none left -> timeout
             except:
                 break               # when sock.recv timeout break loop
+        
         self.sock.settimeout(default['timeout'])
 
     def sendcmd(self,a,b):
@@ -79,14 +83,17 @@ class APIC:
     #===================================================================================================
     
     def checkstate(self):
+        
         self.sendcmd(7,0)
         print(self.sock.recv(32).decode('utf-8'))
-        
+                           
     def sendstate(self, statestr):
+        
         if isinstance(statestr,str):    
             self.sendcmd(7,1)
             self.sock.sendto(statestr.encode('utf-8'),self.ipv4)
             self.STATE = statestr
+        
         else:
             self.errorstatus = "ERROR: Expected String"
 
@@ -101,6 +108,7 @@ class APIC:
     def scanI2C(self):
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.\n
         Takes no arguments but stores received addresses as a list object self.I2Caddrs.'''
+        
         self.sendcmd(0,2)
         addresses = list(self.sock.recv(2))     # recieve a list of 2 I2C addresses in list of 8 bit nums
         self.I2Caddrs = addresses
@@ -108,6 +116,7 @@ class APIC:
     def readI2C(self):
         '''Read the two I2C digital potentiometers.\n 
         Creates two APIC variables self.posGAIN, self.posTHRESH storing the positions.'''
+        
         self.sendcmd(0,0)
         self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive + update gain position variable
         self.posTHRESH = int.from_bytes(self.sock.recv(1),'little')          # receive + update threhold position variable
@@ -118,12 +127,14 @@ class APIC:
         Arguments:
             \t pos: desired position of pot 8 bit value
             \t pot: takes value 0,1 for threshold and gain pots respectively'''
+        
         self.sendcmd(1,pot)
         time.sleep(0.5)
         self.sock.sendto(bytearray([pos]),self.ipv4)
 
     def setpolarity(self,setpolarity=1):
         '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
+        
         self.sendcmd(4,setpolarity)
         self.polarity= setpolarity
 
@@ -139,10 +150,13 @@ class APIC:
     def rateaq(self):
         '''Acquire measured sample activity in Bq, does not work for activities lower than 1Bq.\n
         Returns the sample rate in Hz.'''
-        self.sock.settimeout(default['timeout'])
+        
+        self.drain_socket()
         self.sendcmd(5,1)
-        rateinb = self.sock.recv(4)
+
+        rateinb = self.sock.recv(32)
         rate = int.from_bytes(rateinb,'little',signed=False)
+        
         return rate
     
     def shapergain(self,shapeV):
@@ -155,7 +169,7 @@ class APIC:
     def calibration(self):
         '''Perform a calibration of the setup, arbitrary time and creates two items of the APIC class
         containing the data received.'''
-        # send byte command code
+        
         self.sendcmd(5,0)
 
         readout = bytearray(8)
@@ -167,11 +181,13 @@ class APIC:
 
         # while loop to take data from the ADC until a timeout
         while True:
+
             try:
                 self.sock.recv_into(readout)
                 self.sock.recv_into(readin)
                 self.outputpulses.append(numpy.average(numpy.frombuffer(readout,dtype='unint16')))
                 self.inputpulses.append(numpy.average(numpy.frombuffer(readin,dtype='unint16')))
+
             except:
                 print('Socket timeout!')
                 break
@@ -208,7 +224,8 @@ class APIC:
         self.sock.sendto(datptsb,self.ipv4)                                 # send num if data points to sample
         
         # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
-        while len(self.data)<datpts:
+        while int(len(self.data)/4) < datpts:
+            
             self.sock.recv_into(readm)
             self.data.extend(readm)
             #if x%percent==0:
@@ -216,10 +233,13 @@ class APIC:
             #    rootwin.update()                                # force tkinter to update - non-ideal solution
         
         # Save and return the arrays.
+        
         self.data = numpy.array(self.data)
         self.data.shape = (int(len(self.data)/4), 4)
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections        
+        
         print(self.data.shape)
+        print(self.data)
     
     def savedata(self,data):
         ''' Save numpy data. '''
