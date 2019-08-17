@@ -56,8 +56,10 @@ polarityframe = LabelFrame(root,text='Polarity Switch.')
 polarityframe.grid(row=5,column=4,rowspan=2)
 
 histframe = LabelFrame(root, text='Graph Config')
-histframe.grid(row=7,column=1, columnspan=4,rowspan=4,sticky=NW)
+histframe.grid(row=7,column=1, columnspan=3,rowspan=4,sticky=NW)
 
+saveframe = LabelFrame(root, text='Savemode')
+saveframe.grid(row=7,column=4, rowspan=2, sticky=NW)
 #==================================================================================#
 # I2C TOOLS FRAME:
 # Define read/write functions and map to buttons/sliders for each pot.
@@ -130,21 +132,17 @@ numadc=StringVar()
 
 def ADCi():
     apic.drain_socket()
-    progress['value'] = 0                   # reset progressbar
-    datapoints = int(numadc.get())          # get desired number of samples from the tkinter text entry
-    
-    apic.ADCi(datapoints,progress,root)     # take data using ADCi protocol
-    
-    
-    apic.data = apic.setunits(apic.data, default['units'])
-    
+    progress['value'] = 0                               # reset progressbar
+    datapoints = int(numadc.get())                      # get desired number of samples from the tkinter text entry
+    apic.ADCi(datapoints,progress,root)                 # take data using ADCi protocol
+
     global histogram
     histogram = plt.Figure(dpi=100)
     global ax1
     ax1 = histogram.add_subplot(111)
     
-    apic.hdat = numpy.average(apic.data, axis=1)   # average the ADC peak data over the columns
-    apic.hdat = apic.hdat[apic.hdat>0]                # remove zeros (controvertial feature)
+    apic.hdat = numpy.average(apic.setunits(apic.data, default['units']), axis=1)        # average the ADC peak data over the columns
+    apic.hdat = apic.hdat[apic.hdat>0]                  # remove zeros (controvertial feature)
     
     # set titles and axis labels
     ax1.hist(apic.hdat,default['bins'],color='b', edgecolor='black')
@@ -159,6 +157,12 @@ def ADCi():
     bar1 = FigureCanvasTkAgg(histogram, root)   
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
     apic.drain_socket()                     # drain socket to clear interrupt overflows
+
+    if apic.savemode:
+        apic.savedata(apic.data)            # save raw data
+    else:
+        pass
+
 
 # Add ADC frame widgets
 ADCi_label = Label(ADCframe, text='Interrupt Samples:')
@@ -177,6 +181,7 @@ progress.grid(row=2,column=1,columnspan=3)
 # POLARITY FRAME
 # GRID: 2r 1c
 #==================================================================================#
+
 POL = IntVar()
 
 def pselect():
@@ -247,15 +252,13 @@ y_label.grid(row=3,column=1,sticky=W)
 bins_label = Label(histframe, text= 'BINS:')
 bins_label.grid(row=4,column=1,sticky=W)
 
-
-
 #==================================================================================#
 # CALIBRATION FRAME
 #==================================================================================#
 
 errorbox = Message(root,text='Error messages.',
     bg='white',relief=RIDGE,width=220)
-errorbox.grid(row=7,column=5,columnspan=3)
+errorbox.grid(row=7,column=5,sticky=NW)
 
 def f(x,a,b,c):
     ''' Second order tranfer function to fit to pulse strecher input/output curve.\n
@@ -305,6 +308,17 @@ ratelabel.grid(row=2,column=2)
 
 caliblabel = Label(diagnostic,text='---')
 caliblabel.grid(row=1,column=2)
+#==================================================================================#
+# SAVEMODE FRAME
+#==================================================================================#
+savemode_var = BooleanVar()
+
+def setsavemode():
+    apic.savemode = savemode_var.get()
+
+save_on = Checkbutton(saveframe, text=("%r")%(apic.savemode),
+     command = setsavemode, onvalue=True, offvalue=False, variable=savemode_var)
+save_on.grid(row=1,column=1)
 
 #==================================================================================#
 # TOP MENU FUNCTIONS + OPTIONS
@@ -339,7 +353,6 @@ def savesettings():
     default['ylabel'] = apic.ylabel
     default['bins'] = apic.bins
     
-
     json.dump(default,fp,indent=1)
     fp.close()
 
