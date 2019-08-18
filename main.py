@@ -28,7 +28,6 @@ usb = USB_VCP()                         # init VCP object
 
 i2c = I2C(1, I2C.MASTER,
     baudrate=400000)                    # define I2C channel, master/slave protocol and baudrate needed
-t2 = pyb.Timer(1,freq=1000000)          # init timer for polling
 ti = pyb.Timer(2,freq=1000000)          # init timer for interrupts
 
 # PIN SETUP AND INITIAL POLARITY/INTERRUPT MODE
@@ -39,14 +38,13 @@ calibadc = ADC(Pin('X3'))               # define ADC pin for measuring shaper vo
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
 pin_mode.value(1)                       # disable manual pulse clearing (i.e. pin -> low)
 clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
-polarpin = Pin('X6', Pin.OUT)           # define pin that chooses polarity   
+polaritypin = Pin('X6', Pin.OUT)        # define pin that chooses polarity   
 testpulsepin = Pin('X11',Pin.OUT)       # pin to enable internal test pulses on APIC
-polarpin.value(0)                       # set to 1 for positive polarity
+polaritypin.value(0)                    # set to 1 for positive polarity
 
 # DATA STORAGE AND COUNTERS
 sendbuf = array('H',[500])
-data = array('H',[0]*4)                 # buffer for writing adc interrupt data from adc.read_timed() in calibration() and ADCi()
-calibdata = array('H',[0]*4)            # buffer to store ADC data from calibadc
+databuf = array('H',[0]*4)              # buffer for writing adc interrupt data from adc.read_timed() in calibration() and ADCi()
 tim = bytearray(4)                      # bytearray for microsecond, 4 byte timestamps
 t0=0                                    # time at the beginning of the experiment
 count=0                                 # counter for pulses read
@@ -62,7 +60,6 @@ wl_ap.active(1)                         # enable the AP
 while wl_ap.status('stations')==[]:
     utime.sleep(1)
 
-
 print("CONNECTION RECEIVED")
 
 # SET UP THE NETWORK SOCKET FOR UDP
@@ -71,6 +68,7 @@ s = socket.socket(socket.AF_INET,
 s.bind(('',8080))                       # network listens on port 8080
 cipv4 = ('192.168.4.16', 8080)          # destination for sending data
 awdipv4 = ('192.168.4.16', 9000)        # ip passed to the awd module
+
 print("SOCKET BOUND")
 
 #==================================================================================#
@@ -142,12 +140,12 @@ def calibrate():
     calibint.disable()
 
 def cbcal(line):
-    #adc.read_timed(data,t2)
-    s.sendto(data,cipv4)
+    #adc.read_timed(databuf,t2)
+    s.sendto(databuf,cipv4)
     #clearpin.value(1)
     #clearpin.value(0)
-    calibadc.read_timed(calibdata,t2)
-    s.sendto(calibdata,cipv4)
+    calibadc.read_timed(databuf,t2)
+    s.sendto(databuf,cipv4)
 """
 #==================================================================================#
 # RATE MEASUREMENT CODE
@@ -214,12 +212,12 @@ def callback(arg):
     
     extint.disable()
     global count                    # reference the global count counter
-    adc.read_timed(data,ti)         # 4 microsecond measurement from ADC at X12,
+    adc.read_timed(databuf,ti)         # 4 microsecond measurement from ADC at X12,
     
     pos = (4*count)%500
     
     if pos == 124:
-        sendbuf[pos:pos+4] = data
+        sendbuf[pos:pos+4] = databuf
         
         try:
             s.sendto(sendbuf, cipv4)
@@ -229,7 +227,7 @@ def callback(arg):
     
     else:
 
-        sendbuf[pos:pos+4] = data
+        sendbuf[pos:pos+4] = databuf
     
     count+=1                        # pulse counter
     extint.enable()
@@ -283,8 +281,8 @@ commands = {
     bytes(bytearray([2,0])) : ADCwd,                    # AWD peakfinding
     bytes(bytearray([2,1])) : ADCi,                     # ADC interrupts
 
-    bytes(bytearray([4,0])) : lambda : polarpin.value(0),       # Negative polarity
-    bytes(bytearray([4,1])) : lambda : polarpin.value(1),       # Positive polarity
+    bytes(bytearray([4,0])) : lambda : polaritypin.value(0),       # Negative polarity
+    bytes(bytearray([4,1])) : lambda : polaritypin.value(1),       # Positive polarity
 
     #bytes(bytearray([5,0])) : calibrate,                       # measure detector/apic gain profile 
     bytes(bytearray([5,1])) : rateaq,                           # measure sample rate
