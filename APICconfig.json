@@ -1,23 +1,23 @@
 {
-    "timeout": 10,
-    "ipv4": [
-     "192.168.4.1",
-     8080
-    ],
-    "savemode": true,
-    "rateaqtime": 4,
-    "gainpos": 195,
-    "threshpos": 97,
-    "title": "Fe-55 Energy Spectrum",
-    "calibgradient": 1,
-    "caliboffset": 0,
-    "bins": 256,
-    "polarity": 1,
-    "units" : "mV",
-    "xlabel" : "MAPIC output",
-    "ylabel" : "Counts",
-    "boundaries" : [
-     0,
-     4096
-    ]
+ "timeout": 10,
+ "ipv4": [
+  "192.168.4.1",
+  8080
+ ],
+ "savemode": true,
+ "rateaqtime": 4,
+ "gainpos": 195,
+ "threshpos": 97,
+ "title": "Internal Test Pulses",
+ "calibgradient": 1,
+ "caliboffset": 0,
+ "bins": 256,
+ "polarity": 1,
+ "units": "mV",
+ "xlabel": "MAPIC output",
+ "ylabel": "Counts",
+ "boundaries": [
+  2500,
+  2700
+ ]
 }

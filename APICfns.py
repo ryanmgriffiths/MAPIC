@@ -40,10 +40,11 @@ class APIC:
         self.errorstatus = ""
         self.units = "ADU"
         self.hdat = numpy.array([])
-        self.title = ""
+        self.title = default['title']
         self.posGAIN = default['gainpos']
         self.posTHRESH = default['threshpos']
-        self.boundaries = default['boundaries']
+        self.boundaries = tuple(default['boundaries'])
+        self.bins = default['bins']
 
         # Find the number of relevant files currently in the data directory, select file version number.
         for datafile in os.listdir('histdata'):

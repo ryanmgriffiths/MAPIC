@@ -146,9 +146,9 @@ def ADCi():
     apic.hdat = apic.hdat[apic.hdat>0]                  # remove zeros (controvertial feature)
     
     # set titles and axis labels
-    ax1.hist(apic.hdat,default['bins'],color='b', edgecolor='black')
+    ax1.hist(apic.hdat,apic.bins,apic.boundaries,color='b', edgecolor='black')
     ax1.set_title(default['title'])
-    ax1.set_xlabel(default['xlabel'])
+    ax1.set_xlabel(default['xlabel']+ (" (%s)") % (apic.units))
     ax1.set_ylabel(default['ylabel'])
     
     #plt.savefig('histdata\histogram'+str(apic.raw_dat_count)+'.png')
@@ -239,7 +239,7 @@ highbound_entr = Entry(histframe, textvariable=highbound, width = int(ewidth/2))
 highbound_entr.grid(row=5,column=3)
 
 t_entr.insert([0],default['title'])
-x_entr.insert([0],default['xlabel']+ (" (%s)") % (default['units']))
+x_entr.insert([0],default['xlabel']+ (" (%s)") % (apic.units))
 y_entr.insert([0], default['ylabel'])
 bins_entr.insert([0], default['bins'])
 lowbound_entr.insert([0],default['boundaries'][0])
@@ -361,7 +361,6 @@ def savesettings():
     default['polarity'] = apic.polarity
     default['units'] = apic.units
     default['title'] = apic.title
-    default['xlabel'] = apic.xlabel
     default['ylabel'] = apic.ylabel
     default['bins'] = apic.bins
     default['boundaries'] = apic.boundaries
