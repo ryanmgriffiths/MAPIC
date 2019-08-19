@@ -56,10 +56,11 @@ polarityframe = LabelFrame(root,text='Polarity Switch.')
 polarityframe.grid(row=5,column=4,rowspan=2)
 
 histframe = LabelFrame(root, text='Graph Config')
-histframe.grid(row=7,column=1, columnspan=3,rowspan=4,sticky=NW)
+histframe.grid(row=7,column=1, columnspan=3,rowspan=5,sticky=NW)
 
 saveframe = LabelFrame(root, text='Savemode')
 saveframe.grid(row=7,column=4, rowspan=2, sticky=NW)
+
 #==================================================================================#
 # I2C TOOLS FRAME:
 # Define read/write functions and map to buttons/sliders for each pot.
@@ -203,6 +204,8 @@ xstr = StringVar()
 ystr = StringVar()
 cbins = StringVar()
 unitvar = StringVar()
+lowbound = StringVar()
+highbound = StringVar()
 
 def set_t():
     ax1.cla()
@@ -213,9 +216,10 @@ def set_t():
     apic.ylabel = ystr.get()
     apic.bins = int(cbins.get())
     ax1.set_ylabel(ystr.get())
-    print(unitvar.get())
+    apic.boundaries = (int(lowbound.get()),int(highbound.get()))
+    
     apic.hdat = apic.setunits(apic.hdat,unitvar.get())
-    ax1.hist(apic.hdat, int(cbins.get()), color='b', edgecolor='black')
+    ax1.hist(apic.hdat, int(cbins.get()), (int(lowbound.get()),int(highbound.get())), color='b', edgecolor='black')
     
     bar1 = FigureCanvasTkAgg(histogram, root)   
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
@@ -229,11 +233,17 @@ y_entr = Entry(histframe, textvariable = ystr,width = ewidth)
 y_entr.grid(row=3,column=2,columnspan=2)
 bins_entr = Entry(histframe,textvariable = cbins,width = ewidth)
 bins_entr.grid(row=4,column=2, columnspan=2)
+lowbound_entr = Entry(histframe, textvariable=lowbound, width = int(ewidth/2))
+lowbound_entr.grid(row=5,column=2)
+highbound_entr = Entry(histframe, textvariable=highbound, width = int(ewidth/2))
+highbound_entr.grid(row=5,column=3)
 
 t_entr.insert([0],default['title'])
-x_entr.insert([0],default['xlabel']+default['units'])
+x_entr.insert([0],default['xlabel']+ (" (%s)") % (default['units']))
 y_entr.insert([0], default['ylabel'])
 bins_entr.insert([0], default['bins'])
+lowbound_entr.insert([0],default['boundaries'][0])
+highbound_entr.insert([0], default['boundaries'][1])
 
 mvbutton = Radiobutton(histframe,text='mV',value='mV',variable=unitvar)
 mvbutton.grid(row=1,column=4,sticky=W)
@@ -251,6 +261,8 @@ y_label = Label(histframe, text = 'Y AXIS:')
 y_label.grid(row=3,column=1,sticky=W)
 bins_label = Label(histframe, text= 'BINS:')
 bins_label.grid(row=4,column=1,sticky=W)
+bound_label = Label(histframe, text='BOUNDS')
+bound_label.grid(row=5,column=1,sticky=W)
 
 #==================================================================================#
 # CALIBRATION FRAME
@@ -352,6 +364,7 @@ def savesettings():
     default['xlabel'] = apic.xlabel
     default['ylabel'] = apic.ylabel
     default['bins'] = apic.bins
+    default['boundaries'] = apic.boundaries
     
     json.dump(default,fp,indent=1)
     fp.close()

@@ -34,15 +34,17 @@ class APIC:
         self.raw_dat_count = 0                      #  counter for the number of raw data files
         self.calibgradient = default['calibgradient']
         self.caliboffset = default['caliboffset']
-        self.samples=100
+        self.samples = 100
         self.savemode = default['savemode']
         self.STATE = ""
         self.errorstatus = ""
         self.units = "ADU"
         self.hdat = numpy.array([])
         self.title = ""
-        self.posGain = default['gainpos']
+        self.posGAIN = default['gainpos']
         self.posTHRESH = default['threshpos']
+        self.boundaries = default['boundaries']
+
         # Find the number of relevant files currently in the data directory, select file version number.
         for datafile in os.listdir('histdata'):
             if datafile.startswith('datairq'):

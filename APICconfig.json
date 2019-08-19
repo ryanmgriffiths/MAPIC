@@ -15,7 +15,9 @@
     "polarity": 1,
     "units" : "mV",
     "xlabel" : "MAPIC output",
-    "ylabel" : "Counts"
-   
+    "ylabel" : "Counts",
+    "boundaries" : [
+     0,
+     4096
+    ]
 }
-   
