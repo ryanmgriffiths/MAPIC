@@ -11,13 +11,13 @@
  "title": "Internal Test Pulses",
  "calibgradient": 1,
  "caliboffset": 0,
- "bins": 256,
+ "bins": 200,
  "polarity": 1,
  "units": "mV",
  "xlabel": "MAPIC output",
  "ylabel": "Counts",
  "boundaries": [
-  2500,
-  2700
+  0,
+  3300
  ]
 }

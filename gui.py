@@ -37,7 +37,7 @@ def checkerror():
 
 apic = F.APIC(default['timeout'],default['ipv4']) # connect to the APIC
 
-setup_from_saved()
+#setup_from_saved()
 
 root = Tk()
 root.title('WAQ System')
@@ -212,7 +212,7 @@ def set_t():
     ax1.set_title(titlestr.get())
     ax1.set_xlabel(xstr.get())
     apic.title = titlestr.get()
-    apic.xlabel = xstr.get()+unitvar.get()
+    apic.xlabel = xstr.get()+(" (%s)" % (unitvar.get()))
     apic.ylabel = ystr.get()
     apic.bins = int(cbins.get())
     ax1.set_ylabel(ystr.get())
@@ -223,6 +223,23 @@ def set_t():
     
     bar1 = FigureCanvasTkAgg(histogram, root)   
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
+
+def savefig():
+    figtemp = plt.figure()
+    ax = figtemp.add_subplot(111)
+    ax.set_title(titlestr.get())
+    apic.title = titlestr.get()
+    apic.xlabel = xstr.get()+(" (%s)" % (unitvar.get()))
+    ax.set_xlabel(apic.xlabel)
+    apic.ylabel = ystr.get()
+    apic.bins = int(cbins.get())
+    ax.set_ylabel(ystr.get())
+    apic.boundaries = (int(lowbound.get()),int(highbound.get()))
+    
+    apic.hdat = apic.setunits(apic.hdat,unitvar.get())
+    ax.hist(apic.hdat, int(cbins.get()), (int(lowbound.get()),int(highbound.get())), color='b', edgecolor='black')
+
+    figtemp.savefig('histdata\histogram'+apic.createfileno(apic.raw_dat_count-1)+'.png')
 
 ewidth = 30
 t_entr = Entry(histframe, textvariable = titlestr, width =ewidth)
@@ -252,6 +269,8 @@ adubutton.grid(row=2,column=4,sticky=W)
 
 setbutton = Button(histframe, text='SET', command=set_t, width = 5)
 setbutton.grid(row=3,column=4)
+savebutton = Button(histframe, text='SAVE', command=savefig, width = 5)
+savebutton.grid(row=4,column=4)
 
 t_label = Label(histframe, text = 'TITLE:')
 t_label.grid(row=1,column=1,sticky=W)
@@ -361,7 +380,6 @@ def savesettings():
     default['polarity'] = apic.polarity
     default['units'] = apic.units
     default['title'] = apic.title
-    default['ylabel'] = apic.ylabel
     default['bins'] = apic.bins
     default['boundaries'] = apic.boundaries
     
