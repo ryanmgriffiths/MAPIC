@@ -286,7 +286,7 @@ commands = {
     bytes(bytearray([0,2])) : Is,                       # scan I2C addresses
     bytes(bytearray([1,0])) : lambda : Iw(0x2D),        # write gain pot
     bytes(bytearray([1,1])) : lambda : Iw(0x2C),        # write threshold pot
-    bytes(bytearray([2,0])) : lambda : read_DMA,                    # AWD peakfinding
+    bytes(bytearray([2,0])) : read_DMA,                    # AWD peakfinding
     bytes(bytearray([2,1])) : ADCi,                     # ADC interrupts
 
     bytes(bytearray([4,0])) : lambda : polarpin.value(0),       # Negative polarity
