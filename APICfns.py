@@ -38,13 +38,15 @@ class APIC:
         self.savemode = default['savemode']
         self.STATE = ""
         self.errorstatus = ""
-        self.units = "ADU"
+        self.units = default['units']
         self.hdat = numpy.array([])
         self.title = default['title']
         self.posGAIN = default['gainpos']
         self.posTHRESH = default['threshpos']
         self.boundaries = tuple(default['boundaries'])
         self.bins = default['bins']
+        self.ylabel = ""
+        self.xlabel = ""
 
         # Find the number of relevant files currently in the data directory, select file version number.
         for datafile in os.listdir('histdata'):
@@ -71,7 +73,7 @@ class APIC:
         
         while True:
             try:
-                self.sock.recv(2)   # read 2 byte chunks until none left -> timeout
+                self.sock.recv(2048)   # read 2 byte chunks until none left -> timeout
             except:
                 break               # when sock.recv timeout break loop
         
@@ -244,6 +246,7 @@ class APIC:
             progbar['value'] = tick_count                       # update the progress bar value
             rootwin.update()                                    # force tkinter to update - non-ideal solution
         
+        self.drain_socket()
         # Save and return the arrays.
         self.data = numpy.array(self.data)
         self.data.shape = (int(len(self.data)/4), 4)
@@ -251,23 +254,20 @@ class APIC:
     
     def savedata(self,data):
         ''' Save numpy data. '''
+        print(self.raw_dat_count)
         numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
-        self.raw_dat_count+=1                                   # new file version number
-    
+        self.raw_dat_count+=1                               # new file version number
+
     def adcwd_test(self,datpts,progbar,rootwin):
         '''INIT NEW SOCKET & TAKE DATA FROM BOARD!'''
         sock1 = socket.socket(socket.AF_INET
             ,socket.SOCK_DGRAM)                                 # reinit socket object
         sock1.settimeout(1)                                     # set timeout -> default this
-        #sock1.connect(("192.168.4.1",9000))                     # init reconnection, new port
         sock1.bind(('', 9000))
-        
+        readm = array("H",[0]*500)
         for x in range(10):
-            try:
-                testdat = sock1.recvfrom(500)
-                print("Success")
-            except:
-                print("Nothing")
+            testdat = sock1.recv_into(readm)
+            print(testdat)
 
         #self.samples = datpts                                   # number of samples class var
         #progbar['maximum'] = datpts                             # update progress bar max value
