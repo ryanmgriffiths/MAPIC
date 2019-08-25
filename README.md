@@ -197,16 +197,37 @@ STATIC const mp_map_elem_t adcwd_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_custom), (mp_obj_t)&mymodule_customObj_type },
 };
 ```
-## Custom Micropython Module
+## Custom Micropython Code
 
-The custom module developed for this application is named ```adcwd``` and can be imported in micropython.
+Added new files ```udpsend.c``` and ```udpsend.h```. This code uses the lwIP RAW UDP API and provides a function to send a 16bit buffer to a custom IPv4 address.
 
-ADD DEFINITIONS AND THINGS HERE!
+```C
+// Send a buffer through UDP RAW API
+err_t mp_send_udp(struct udp_pcb *udppcb ,const u16_t *payload, ip_addr_t *dest_ip, u16_t port, u16_t payloadsize);
+// Returns an err_t error code (signed char) for the outcome of the send
+```
+
+Added a new custom function to ```adc.c``` called ```adc.read_DMA```. This function enables ADC peakfinding with the analog watchdog from the STM32 HAL Drivers. Peaks will be sampled up to num_samples and the data continuously streamed out via UDP to an IPV4 address.
+
+```python
+# Necessary imports
+from pyb import ADC
+from machine import Pin
+
+adcpin = Pin("X12")             # set up ADC pin object
+adc = ADC(adcpin)               # create ADC object with the ADC pin
+
+adc.read_DMA(num_samples,ipv4)  # init sampling process
+
+# adc.read_DMA(num_samples,ipv4)
+# num_samples : integer number of peaks to sample, ideally multiple of 50
+# ipv4 : IPV4 address tuple e.g. ("192.168.1.1",5000) 
+# returns nothing
+```
 
 
 ## Operation
 
-* Once dependencies are installed, connect the MAPIC to a power source via usb.
 * Connect to the Wi-Fi access point "PYBD" on the readout system.
 * Launch the MAPIC.bat file to start the GUI from which one can control the MAPIC and take measurements
 
@@ -216,11 +237,11 @@ ADD DEFINITIONS AND THINGS HERE!
 This application requires knowledge and use of the following python libraries/implementations in addition to those installed through pip:
 
 * [Tkinter](https://www.tutorialspoint.com/python/python_gui_programming)
-* [Socket](https://docs.python.org/3/library/socket.html)
-* [Micropython](https://docs.micropython.org/en/latest/)
-* [Micropython for the pyboard D](https://pybd.io/hw/pybd_sfxw.html)
+* [Python Socket API](https://docs.python.org/3/library/socket.html)
+* [Micropython Language Docs](https://docs.micropython.org/en/latest/)
+* [Micropython for the Pyboard D](https://pybd.io/hw/pybd_sfxw.html)
 
 ### C Links
 * STMCUBE32F7
-* lwip
-* micropython C module extension
+* lwIP UDP API
+* Micropython C modules
