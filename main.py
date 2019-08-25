@@ -5,7 +5,6 @@ import pyb
 import utime
 import machine
 import micropython
-#import adcwd                # CUSTOM MIRCOPYTHON MODULE!
 import usocket as socket
 from machine import Pin
 from pyb import ExtInt
@@ -297,7 +296,7 @@ commands = {
 
     bytes(bytearray([6,0])) : lambda: testpulsepin.value(0),    # disable test pulses
     bytes(bytearray([6,1])) : lambda: testpulsepin.value(1)     # enable test pulses
-    }
+}
 
 #==================================================================================#
 # MAIN LOOP
