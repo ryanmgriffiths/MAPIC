@@ -11,7 +11,7 @@ from tkinter import *
 import tkinter.ttk as ttk
 import time
 
-fp = open("APICconfig.json","r")            # open the json config file in rw mode
+fp = open("MAPICconfig.json","r")            # open the json config file in rw mode
 default = json.load(fp)                     # load default settings dictionary
 fp.close()
 

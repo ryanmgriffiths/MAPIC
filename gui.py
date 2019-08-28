@@ -8,7 +8,7 @@ import serial
 import time
 from array import array
 import datetime
-import APICfns as F
+import MAPICfns as MAPICEXT
 import json
 
 #==================================================================================#
@@ -19,7 +19,7 @@ import json
 # setup each frame with a label and allocate sizes with grid.
 #==================================================================================#
 
-fp = open("APICconfig.json","r")            # load config file in rw mode
+fp = open("MAPICconfig.json","r")            # load config file in rw mode
 default = json.load(fp)                     # load default settings dictionary
 fp.close()
 
@@ -35,7 +35,7 @@ def setup_from_saved():
 def checkerror():
     errorbox.config(text=apic.errorstatus)
 
-apic = F.APIC(default['timeout'],default['ipv4']) # connect to the APIC
+apic = MAPICEXT.APIC(default['timeout'],default['ipv4']) # connect to the APIC
 
 #setup_from_saved()
 
