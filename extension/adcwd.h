@@ -1,1 +1,0 @@
-extern const mp_obj_type_t adcwd_adcwdObj_type;
