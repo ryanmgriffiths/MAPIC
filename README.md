@@ -203,7 +203,8 @@ Added new files ```udpsend.c``` and ```udpsend.h```. This code uses the lwIP RAW
 
 ```C
 // Send a buffer through UDP RAW API
-err_t mp_send_udp(struct udp_pcb *udppcb ,const u16_t *payload, ip_addr_t *dest_ip, u16_t port, u16_t payloadsize);
+err_t mp_send_udp(struct udp_pcb *udppcb ,const u16_t *payload, 
+                ip_addr_t *dest_ip, u16_t port, u16_t payloadsize);
 // Returns an err_t error code (signed char) for the outcome of the send
 ```
 
@@ -236,12 +237,22 @@ adc.read_DMA(num_samples,ipv4)  # init sampling process
 ### Python Links
 This application requires knowledge and use of the following python libraries/implementations in addition to those installed through pip:
 
-* [Tkinter](https://www.tutorialspoint.com/python/python_gui_programming)
-* [Python Socket API](https://docs.python.org/3/library/socket.html)
-* [Micropython Language Docs](https://docs.micropython.org/en/latest/)
-* [Micropython for the Pyboard D](https://pybd.io/hw/pybd_sfxw.html)
+* [Tkinter](https://www.tutorialspoint.com/python/python_gui_programming) used for the Python GUI.
+* [Python Socket API](https://docs.python.org/3/library/socket.html) for data transfer with the board.
+* [Micropython Language Docs](https://docs.micropython.org/en/latest/) for python development on the board.
+* [Micropython for the Pyboard D](https://pybd.io/hw/pybd_sfxw.html) Pyboard D specific features.
 
 ### C Links
-* STMCUBE32F7
-* lwIP UDP API
-* Micropython C modules
+
+Links to specific C apis used in the development of this project, as well as some more detailed instructions on micropython development.
+
+* [STMCUBE32F7](https://www.st.com/en/embedded-software/stm32cubef7.html)  HAL libraries used for coding micropython/board control.
+* [lwIP UDP API](https://www.nongnu.org/lwip/2_1_x/index.html) lightweight C socket API, used with python sockets for data streaming.
+* [Micropython C modules](https://github.com/MikeTeachman/MicroPython_ESP32_psRAM_LoBo_I2S/blob/master/MicroPython_BUILD/components/micropython/esp32/argument_examples.c) more detailed explanations/examples on how to develop micropython functions.
+
+
+### Hardware Links
+Relevant data sheets and technical documentation for the Pyboard D SF3 chip.
+
+* [STM32F72(3)xxx Reference Manual](https://www.st.com/content/ccc/resource/technical/document/reference_manual/group0/c8/6b/6e/ce/dd/f7/4b/97/DM00305990/files/DM00305990.pdf/jcr:content/translations/en.DM00305990.pdf)
+* [STM32F723IEK Datasheet](https://www.st.com/en/microcontrollers-microprocessors/stm32f723ze.html#)
