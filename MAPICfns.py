@@ -88,7 +88,7 @@ class APIC:
         self.sock.sendto(bytearray([a,b]),self.ipv4)
 
     #===================================================================================================
-    # STATE OPERATIONS
+    # STATE OPERATIONS - CURRENTLY UNUSED BUT MAY BE USEFUL
     #===================================================================================================
     
     def checkstate(self):
@@ -258,26 +258,14 @@ class APIC:
         numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
         self.raw_dat_count+=1                               # new file version number
 
-    def adcwd_test(self,datpts,progbar,rootwin):
-        '''INIT NEW SOCKET & TAKE DATA FROM BOARD!'''
+    def udp_test(self):
+        '''INIT NEW SOCKET & TAKE DATA FROM BOARD, EXPECTS 32BIT VALUES FROM DMA BUFFER'''
         sock1 = socket.socket(socket.AF_INET
             ,socket.SOCK_DGRAM)                                 # reinit socket object
-        sock1.settimeout(1)                                     # set timeout -> default this
+        sock1.settimeout(10)                                     # set timeout -> default this
         sock1.bind(('', 9000))
-        readm = array("H",[0]*500)
+        self.sendcmd(2,0)
+        readm = array("L",[0]*30)
         for x in range(10):
-            testdat = sock1.recv_into(readm)
-            print(testdat)
-
-        #self.samples = datpts                                   # number of samples class var
-        #progbar['maximum'] = datpts                             # update progress bar max value
-        #rootwin.update_idletasks()                              # force tkinter to refresh
-"""        self.data = numpy.zeros((datpts,4),
-            dtype='uint16')                                     # ADC values numpy array
-        datptsb = datpts.to_bytes(8,'little',
-            signed=False)                                       # convert data to an 8 byte integer for sending
-
-        self.sock1.send(datptsb)                                # send num if data points to sample
-        # add a for loop for data transfer, long timeout.
-        testdat = self.sock1.recv(1)
-        print(testdat)"""
+            sock1.recv_into(readm)
+            print(readm)
