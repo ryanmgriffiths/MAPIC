@@ -10,6 +10,7 @@ from array import array
 from tkinter import *
 import tkinter.ttk as ttk
 import time
+import matplotlib.pyplot as plt
 
 fp = open("MAPICconfig.json","r")            # open the json config file in rw mode
 default = json.load(fp)                     # load default settings dictionary
@@ -264,8 +265,20 @@ class APIC:
             ,socket.SOCK_DGRAM)                                 # reinit socket object
         sock1.settimeout(10)                                     # set timeout -> default this
         sock1.bind(('', 9000))
+        datastore = array("L",[])                                    # ADC values numpy array
+        readm = array("L",[0]*300)
+
         self.sendcmd(2,0)
-        readm = array("L",[0]*30)
-        for x in range(10):
-            sock1.recv_into(readm)
-            print(readm)
+        for x in range(100000):
+            try:
+                sock1.recv_into(readm)
+                datastore.extend(readm)
+                print(readm)
+            except:
+                break
+        plt.figure()
+
+        plt.plot(numpy.arange(len(datastore)),numpy.array(datastore))
+        plt.xticks([])
+        plt.show()
+        sock1.close()
