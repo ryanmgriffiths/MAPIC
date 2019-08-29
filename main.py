@@ -33,7 +33,7 @@ ti = pyb.Timer(2,freq=1000000)          # init timer for interrupts
 # PIN SETUP AND INITIAL POLARITY/INTERRUPT MODE
 Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
 Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
-adc = ADC(Pin('X12'))                   # define ADC pin for pulse stretcher measurement
+adc = ADC(Pin('X12'), False)                   # define ADC pin for pulse stretcher measurement
 #calibadc = ADC(Pin('X3'))               # define ADC pin for measuring shaper voltage
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
 pin_mode.value(1)                       # disable manual pulse clearing (i.e. pin -> low)
@@ -57,10 +57,10 @@ wl_ap = network.WLAN(1)                 # init wlan object
 wl_ap.config(essid='PYBD')              # set AP SSID
 wl_ap.config(channel=1)                 # set AP channel
 wl_ap.active(1)                         # enable the AP
-"""
+
 while wl_ap.status('stations')==[]:
     utime.sleep(1)
-"""
+
 
 print("CONNECTION RECEIVED")
 
@@ -184,10 +184,6 @@ def ratecount(line):
 #==================================================================================#
 
 # MAIN ADC MEASUREMENT CODE
-def read_DMA():
-    adc.read_DMA(10000,('192.168.4.16',9000))
-    utime.sleep(5)
-    machine.reset()
 
 def ADCi():
     
@@ -285,7 +281,8 @@ commands = {
     bytes(bytearray([0,2])) : Is,                       # scan I2C addresses
     bytes(bytearray([1,0])) : lambda : Iw(0x2D),        # write gain pot
     bytes(bytearray([1,1])) : lambda : Iw(0x2C),        # write threshold pot
-    bytes(bytearray([2,0])) : read_DMA,                    # AWD peakfinding
+    
+    bytes(bytearray([2,0])) : adc.read_dma,             # testing DMA interrupts measurements,
     bytes(bytearray([2,1])) : ADCi,                     # ADC interrupts
 
     bytes(bytearray([4,0])) : lambda : polarpin.value(0),       # Negative polarity
@@ -301,6 +298,7 @@ commands = {
 #==================================================================================#
 # MAIN LOOP
 #==================================================================================#
+
 while True:
     mode = s.recv(2)            # wait until the board receives the 2 byte command code, no timeout
     print("MODE RECEIVED")
