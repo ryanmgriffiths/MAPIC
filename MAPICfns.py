@@ -266,14 +266,14 @@ class APIC:
         sock1.settimeout(10)                                     # set timeout -> default this
         sock1.bind(('', 9000))
         datastore = array("L",[])                                    # ADC values numpy array
-        readm = array("L",[0]*300)
+        readm = array("L",[0]*360)
+        time.sleep(0.5)
 
         self.sendcmd(2,0)
-        for x in range(100000):
+        for x in range(10000):
             try:
                 sock1.recv_into(readm)
                 datastore.extend(readm)
-                print(readm)
             except:
                 break
         plt.figure()
