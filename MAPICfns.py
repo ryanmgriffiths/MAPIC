@@ -37,7 +37,7 @@ class APIC:
         self.caliboffset = default['caliboffset']
         self.samples = 100
         self.savemode = default['savemode']
-        self.STATE = ""
+        self.STATE = ""                             # currently unused
         self.errorstatus = ""
         self.units = default['units']
         self.hdat = numpy.array([])
@@ -48,8 +48,15 @@ class APIC:
         self.bins = default['bins']
         self.ylabel = ""
         self.xlabel = ""
+        
+        # ADC DMA stream acceptor socket
+        self.sockdma = socket.socket(socket.AF_INET
+            ,socket.SOCK_DGRAM)                                     # reinit socket object
+        self.sockdma.settimeout(2)                                    # set timeout -> default this
+        self.sockdma.bind(('', 9000))                                 # bind socket to receive
 
-        # Find the number of relevant files currently in the data directory, select file version number.
+
+        # Find the number of files currently in the data directory, find latest file version number to use
         for datafile in os.listdir('histdata'):
             if datafile.startswith('datairq'):
                 self.raw_dat_count+=1
@@ -88,10 +95,10 @@ class APIC:
         \t b: second command byte for subsection.'''
         self.sock.sendto(bytearray([a,b]),self.ipv4)
 
-    #===================================================================================================
-    # STATE OPERATIONS - CURRENTLY UNUSED BUT MAY BE USEFUL
-    #===================================================================================================
-    
+#===================================================================================================
+# STATE OPERATIONS - CURRENTLY UNUSED BUT MAY BE USEFUL
+#===================================================================================================
+
     def checkstate(self):
         
         self.sendcmd(7,0)
@@ -111,9 +118,9 @@ class APIC:
         ''' Disconnect the socket.'''
         self.sock.close()
     
-    #===================================================================================================
-    # I2C OPERATIONS
-    #===================================================================================================
+#===================================================================================================
+# I2C OPERATIONS
+#===================================================================================================
     
     def scanI2C(self):
         '''Scan for discoverable I2C addresses to the board, returning a list of found I2C addresses in decimal.\n
@@ -141,12 +148,10 @@ class APIC:
         self.sendcmd(1,pot)
         time.sleep(0.5)
         self.sock.sendto(bytearray([pos]),self.ipv4)
-
-    def setpolarity(self,setpolarity=1):
-        '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
-        
-        self.sendcmd(4,setpolarity)
-        self.polarity= setpolarity
+    
+#===================================================================================================
+# POLTTING AND DATA ANALYSIS
+#===================================================================================================
     
     def setunits(self,data,_units):
         if self.units == _units:
@@ -161,6 +166,21 @@ class APIC:
     def curvecorrect(self, Input):
         return ((Input + self.caliboffset)/self.calibgradient)
 
+    def setpolarity(self,setpolarity=1):
+        '''Connection and byte transfer protocol testing. Send a byte command a receive a message back.'''
+        
+        self.sendcmd(4,setpolarity)
+        self.polarity= setpolarity
+    
+    def savedata(self,data):
+        ''' Save numpy data. '''
+        print(self.raw_dat_count)
+        numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
+        self.raw_dat_count+=1                               # new file version number
+#===================================================================================================
+# MISC FUNCTIONS
+#===================================================================================================    
+    
     def rateaq(self):
         '''Acquire measured sample activity in Bq, does not work for activities lower than 1Bq.\n
         Returns the sample rate in Hz.'''
@@ -210,9 +230,9 @@ class APIC:
         self.outputpulses = self.setunits(numpy.array(self.outputpulses),'mV')
         self.inputpulses = self.setunits(numpy.array(self.inputpulses), 'mV')
     
-    #===================================================================================================
-    # ADC DAQ OPERATIONS
-    #===================================================================================================
+#===================================================================================================
+# ADC DAQ OPERATIONS
+#===================================================================================================
     
     def ADCi(self,datpts,progbar,rootwin):
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples,\n 
@@ -253,32 +273,23 @@ class APIC:
         self.data.shape = (int(len(self.data)/4), 4)
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections
     
-    def savedata(self,data):
-        ''' Save numpy data. '''
-        print(self.raw_dat_count)
-        numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
-        self.raw_dat_count+=1                               # new file version number
-
     def udp_test(self):
         '''INIT NEW SOCKET & TAKE DATA FROM BOARD, EXPECTS 32BIT VALUES FROM DMA BUFFER'''
-        sock1 = socket.socket(socket.AF_INET
-            ,socket.SOCK_DGRAM)                                 # reinit socket object
-        sock1.settimeout(10)                                     # set timeout -> default this
-        sock1.bind(('', 9000))
         datastore = array("L",[])                                    # ADC values numpy array
         readm = array("L",[0]*360)
-        time.sleep(0.5)
 
         self.sendcmd(2,0)
-        for x in range(10000):
+        for x in range(100000):
             try:
-                sock1.recv_into(readm)
+                self.sockdma.recv_into(readm)
                 datastore.extend(readm)
             except:
                 break
+        datastore = numpy.array(datastore)
+        datastore = datastore[datastore>0]
+        print(len(datastore))
         plt.figure()
 
-        plt.plot(numpy.arange(len(datastore)),numpy.array(datastore))
+        plt.plot(numpy.arange(len(datastore)),datastore)
         plt.xticks([])
         plt.show()
-        sock1.close()
