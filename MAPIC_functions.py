@@ -12,7 +12,7 @@ import tkinter.ttk as ttk
 import time
 import matplotlib.pyplot as plt
 
-fp = open("MAPICconfig.json","r")            # open the json config file in rw mode
+fp = open("MAPIC_utils/MAPIC_config.json","r")            # open the json config file in rw mode
 default = json.load(fp)                     # load default settings dictionary
 fp.close()
 

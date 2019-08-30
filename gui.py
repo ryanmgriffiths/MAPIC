@@ -8,7 +8,7 @@ import serial
 import time
 from array import array
 import datetime
-import MAPICfns as MAPICEXT
+import MAPIC_functions as MAPIC
 import json
 
 #==================================================================================#
@@ -19,7 +19,7 @@ import json
 # setup each frame with a label and allocate sizes with grid.
 #==================================================================================#
 
-fp = open("MAPICconfig.json","r")            # load config file in rw mode
+fp = open("MAPIC_utils/MAPIC_config.json","r")            # load config file in read mode
 default = json.load(fp)                     # load default settings dictionary
 fp.close()
 
@@ -35,13 +35,13 @@ def setup_from_saved():
 def checkerror():
     errorbox.config(text=apic.errorstatus)
 
-apic = MAPICEXT.APIC(default['timeout'],default['ipv4']) # connect to the APIC
+apic = MAPIC.APIC(default['timeout'],default['ipv4']) # connect to the APIC
 
 #setup_from_saved()
 
 root = Tk()
-root.title('WAQ System')
-#root.wm_iconbitmap('dAPIC.bmp')
+root.title('WIRELESS MAPIC')
+root.wm_iconbitmap('MAPIC_utils/MAPIC.ico')
 
 I2Cframe = LabelFrame(root,text='I2C Digital Potentiometer Control')
 I2Cframe.grid(row=1,column=1,columnspan=5,rowspan=4)
@@ -370,7 +370,7 @@ def quit():
 def savesettings():
     ''' Save updated config settings so that setup is preserved on restart. '''
     
-    fp = open("APICconfig.json","w")
+    fp = open("MAPIC_utils/MAPIC_config.json","w")
 
     default['calibgradient'] = apic.calibgradient
     default['timeout'] = apic.tout
