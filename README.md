@@ -4,10 +4,9 @@
 
 A software package for wireless control and DAQ from the MAPIC using a __Pyboard D SF3W__. Current features and perforamance include:
 
-* Wifi communication using python socket network module/UDP. Data transfer rate determined to be ~ 20Mb/s.
+* Wifi communication using python socket network module/UDP. Maximum data transfer rate determined to be > 95Mb/s.
 * Read and write to two I2C potentiometers at addresses 0x2C and 0x2D. Also scan for I2C addresses.
-* Python level interrupt measurements with ADC, as well as a __high performance C implementation of HAL
-analog watchdog for STM32__.
+* Python level interrupt measurements with ADC, in addition to high performance DMA interrupt peakfinding code integrated into Micropython.
 * Histogram generation and display in real time.
 * Python Tkinter GUI for control and readout.
 * Config file to edit default settings and save setup for repeat measurments.
