@@ -273,6 +273,43 @@ class APIC:
         self.data.shape = (int(len(self.data)/4), 4)
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections
     
+    def adc_peak_find(self,datpts):
+        tick_count = 0
+        self.sockdma.settimeout(5)
+        self.samples = datpts                                   # update samples item
+        print(datpts)
+        #progbar['maximum'] = int((4*datpts)/2048)                # update progress bar max value
+        #rootwin.update_idletasks()                              # force tkinter to refresh
+
+        readm = array("L",[0]*2000)                             # Bytearray for receiving ADC data (with no mem allocation)
+        self.data = array("L",[])                               # ADC values numpy array
+        ##datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
+
+        self.sendcmd(2,0)
+        ##self.sock.sendto(datptsb,self.ipv4)                     # send num if data points to sample
+        
+        # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
+        while len(self.data) < datpts:
+            
+            self.sockdma.recv_into(readm)
+            #tick_count+=1
+            self.data.extend(readm)
+            #progbar['value'] = tick_count                       # update the progress bar value
+            #rootwin.update()                                    # force tkinter to update - non-ideal solution
+        
+        # Save and return the arrays.
+        self.data = numpy.array(self.data,dtype='uint32')
+        
+        #print(self.data)
+        data_time_us = self.data[0::2] + 1E-06 *  numpy.bitwise_and(numpy.right_shift(self.data[1::2],12),1048575) #((self.data[1::2] >> 12) & 1048575)
+        data_adcmax = (self.data[1::2] & 4095)
+
+        print(data_adcmax)
+        plt.figure()
+        plt.plot(data_time_us,data_adcmax)
+        #print(data_time)
+        plt.show()
+        
     def udp_test(self):
         '''INIT NEW SOCKET & TAKE DATA FROM BOARD, EXPECTS 32BIT VALUES FROM DMA BUFFER'''
         datastore = array("L",[])                                    # ADC values numpy array
@@ -293,3 +330,5 @@ class APIC:
         plt.plot(numpy.arange(len(datastore)),datastore)
         plt.xticks([])
         plt.show()
+
+

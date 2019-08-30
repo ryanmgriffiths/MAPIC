@@ -7,7 +7,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import serial
 import time
 from array import array
-import datetime
 import MAPIC_functions as MAPIC
 import json
 
@@ -387,8 +386,7 @@ def savesettings():
     fp.close()
 
 def adcwd():
-    apic.udp_test()         # take data using ADCi protocol
-
+    apic.adc_peak_find(1000000)
 
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
