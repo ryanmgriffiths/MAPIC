@@ -23,11 +23,10 @@ micropython.alloc_emergency_exception_buf(100) # For interrupt debugging
 
 # OBJECT DEFINITIONS
 led = LED(1)                            # define diagnostic LED
-usb = USB_VCP()                         # init VCP object
+#usb = USB_VCP()                         # init VCP object, NOT IN USE
 
 i2c = I2C(1, I2C.MASTER,
     baudrate=400000)                    # define I2C channel, master/slave protocol and baudrate needed
-t2 = pyb.Timer(1,freq=1000000)          # init timer for polling
 ti = pyb.Timer(2,freq=1000000)          # init timer for interrupts
 
 # PIN SETUP AND INITIAL POLARITY/INTERRUPT MODE
@@ -58,18 +57,14 @@ wl_ap.config(essid='PYBD')              # set AP SSID
 wl_ap.config(channel=1)                 # set AP channel
 wl_ap.active(1)                         # enable the AP
 
+# LOOP UNTIL A CONNECTION IS RECEIVED
 while wl_ap.status('stations')==[]:
     utime.sleep(1)
 
-
-print("CONNECTION RECEIVED")
-
 # SET UP THE NETWORK SOCKET FOR UDP
-s = socket.socket(socket.AF_INET,
-    socket.SOCK_DGRAM)
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.bind(('',8080))                       # network listens on port 8080
 cipv4 = ('192.168.4.16', 8080)          # destination for sending data
-awdipv4 = ('192.168.4.16', 9000)        # ip passed to the awd module
 print("SOCKET BOUND")
 
 #==================================================================================#
@@ -95,6 +90,10 @@ def drain_socket():
 
 #==================================================================================#
 # I2C CONTROL
+# Ir, read both I2C chips and send via socket.
+# Iw, write 8 bit val to an I2C pot.
+# Is, scan for the I2C addresses on the pulse stretcher.
+# If the I2C chips are not connected, an exception will be raised.
 #==================================================================================#
 
 def Ir():
@@ -129,7 +128,7 @@ def Is():
     return None
 
 #==================================================================================#
-# CALIBRATION CURVE CODE
+# CALIBRATION CURVE CODE FIXME: Find a way to measure this properly
 #==================================================================================#
 """
 def calibrate():
@@ -153,7 +152,6 @@ def cbcal(line):
 #==================================================================================#
 
 def rateaq():
-
     print('COUNTING RATE')
     global ratecounter
     global rateint
@@ -183,22 +181,17 @@ def ratecount(line):
 # concurrent interrupts.                                
 #==================================================================================#
 
-# MAIN ADC MEASUREMENT CODE
-
 def ADCi():
     
     global extint
     global count
     count = 0
     
-    utime.sleep(0.5)
-    print("ADCI INIT")
-    
+    utime.sleep(0.5)    
     msg, addr = s.recvfrom(8)
     mnum = int.from_bytes(msg,'little')
     mnum=mnum*1.2
-    print(mnum)
-    
+
     utime.sleep(1)
     extint.enable()
     
@@ -220,20 +213,15 @@ def callback(arg):
     
     if pos == 124:
         sendbuf[pos:pos+4] = data
-        
         try:
             s.sendto(sendbuf, cipv4)
-    
         except:
             print("SEND FAILED")
-    
     else:
-
         sendbuf[pos:pos+4] = data
-    
-    count+=1                        # pulse counter
-    print(count)
-    extint.enable()
+
+    count+=1                                # pulse counter
+    extint.enable()                         # re-enable interrupts
 
 # TEMP FIX FOR ISR OVERFLOW
 # Uses micropython.schedule to delay interrupts
@@ -255,21 +243,24 @@ rateint = ExtInt('X4',ExtInt.IRQ_RISING,
     pyb.Pin.PULL_NONE,ratecount)            # interrupts to measure sample activity on pin X4
 rateint.disable()
 
-pyb.enable_irq(irqstate) # re-enable irqs
+pyb.enable_irq(irqstate)                    # re-enable irqs
 
 #==================================================================================#
-# AWD CODE
+# C ADC data stream method
+# Wait for this to complete before attempting any other actions.
+# Uses a different ADC setup from python level ADCi.
 #==================================================================================#
-"""
-def ADCwd():
-    s.close()
-    AWD = adcwd.adcwdObj(0,200)
-    AWD.start_peakfinding_udp(1000,awdipv4)
-"""
+
+def read_DMA():
+    msg = s.recv(8)
+    mnum = int.from_bytes(msg,'little')
+    mnum=mnum*1.2
+    adc.read_dma(mnum)
+
 #==================================================================================#
 # COMMAND CODES:
-# bytearrays used by main loop to execute functions
-# expect a byte command.
+# Bytearrays used by main loop to execute functions
+# expect a 2-byte command.
 #==================================================================================#
 
 commands = {
@@ -282,13 +273,14 @@ commands = {
     bytes(bytearray([1,0])) : lambda : Iw(0x2D),        # write gain pot
     bytes(bytearray([1,1])) : lambda : Iw(0x2C),        # write threshold pot
     
-    bytes(bytearray([2,0])) : adc.read_dma,             # testing DMA interrupts measurements,
+    bytes(bytearray([2,0])) : read_DMA,                 # testing DMA interrupts measurements,
     bytes(bytearray([2,1])) : ADCi,                     # ADC interrupts
-
+    bytes(bytearray([2,2])) : adc.read_interleaved,     # TODO: Implement this feature properly
+    
     bytes(bytearray([4,0])) : lambda : polarpin.value(0),       # Negative polarity
     bytes(bytearray([4,1])) : lambda : polarpin.value(1),       # Positive polarity
 
-    #bytes(bytearray([5,0])) : calibrate,                       # measure detector/apic gain profile 
+    #bytes(bytearray([5,0])) : calibrate,                       # FIXME: measure detector/apic gain profile 
     bytes(bytearray([5,1])) : rateaq,                           # measure sample rate
 
     bytes(bytearray([6,0])) : lambda: testpulsepin.value(0),    # disable test pulses
