@@ -105,6 +105,13 @@ adc.read_interleaved(num_samples,ipv4)
 # returns nothing
 ```
 
+To switch the mode halfway through a program, one must first parse the following set of commands 
+
+```python
+adc.deinit()            # deinit the adc peripheral, clear configuration
+adc = ADC(adcpin, mode) # reinitialise the adc object with desired mode
+```
+
 ## Operation
 
 * Connect to the Wi-Fi access point "PYBD" on the readout system.
