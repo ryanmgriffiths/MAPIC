@@ -149,9 +149,7 @@ def ADCi():
     ax1.set_title(default['title'])
     ax1.set_xlabel(default['xlabel']+ (" (%s)") % (apic.units))
     ax1.set_ylabel(default['ylabel'])
-    
-    #plt.savefig('histdata\histogram'+str(apic.raw_dat_count)+'.png')
-    
+        
     # add the plot to the gui
     global bar1
     bar1 = FigureCanvasTkAgg(histogram, root)   
@@ -159,9 +157,40 @@ def ADCi():
     apic.drain_socket()                     # drain socket to clear interrupt overflows
 
     if apic.savemode:
-        apic.savedata(apic.data)            # save raw data
+        apic.savedata(apic.data,'adc_count')            # save raw data
+        apic.raw_dat_count += 1
     else:
         pass
+
+def ADC_DMA():
+    progress['value'] = 0                               # reset progressbar
+    datapoints = int(numadc.get())                      # get desired number of samples from the tkinter text entry
+    apic.adc_peak_find(datapoints,progress,root)
+    
+    global histogram
+    histogram = plt.Figure(dpi=100)
+    global ax1
+    ax1 = histogram.add_subplot(111)
+    apic.data = apic.setunits(apic.data, default['units'])
+    # apic.data_time -> time with us resolution in same order as above
+
+    ax1.hist(apic.data,apic.bins,apic.boundaries,color='b', edgecolor='black')
+    ax1.set_title(default['title'])
+    ax1.set_xlabel(default['xlabel']+ (" (%s)") % (apic.units))
+    ax1.set_ylabel(default['ylabel'])
+
+    # add the plot to the gui
+    global bar1
+    bar1 = FigureCanvasTkAgg(histogram, root)   
+    bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
+
+    if apic.savemode:
+        apic.savedata(apic.data,'adc_count')            # save data
+        apic.savedata(apic.data_time,'time_data')       # save time data
+        apic.raw_dat_count += 1
+    else:
+        pass
+
 
 
 # Add ADC frame widgets

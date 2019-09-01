@@ -1,5 +1,4 @@
 '''Module containing APIC Class with methods to control pyboard peripherals and the measurement protocols.'''
-
 import serial       # USB serial communication
 import socket       # Low level networking module
 import datetime     # for measuring rates
@@ -57,7 +56,7 @@ class APIC:
 
         # Find the number of files currently in the data directory, find latest file version number to use
         for datafile in os.listdir('histdata'):
-            if datafile.startswith('datairq'):
+            if datafile.startswith('adc_count'):
                 self.raw_dat_count+=1
             else:
                 pass
@@ -170,12 +169,10 @@ class APIC:
         
         self.sendcmd(4,setpolarity)
         self.polarity= setpolarity
-    
-    def savedata(self,data):
-        ''' Save numpy data. '''
-        print(self.raw_dat_count)
-        numpy.savetxt('histdata\datairq'+self.createfileno(self.raw_dat_count)+'.txt',data)
-        self.raw_dat_count+=1                               # new file version number
+
+    def savedata(self,data,filename):
+        ''' Save numpy data.'''
+        numpy.savetxt('histdata\%s'+self.createfileno(self.raw_dat_count)+'.txt'%(filename),data)
 #===================================================================================================
 # MISC FUNCTIONS
 #===================================================================================================    
@@ -244,7 +241,6 @@ class APIC:
         
         tick_count = 0
         self.samples = datpts                                   # update samples item
-        print(datpts)
         progbar['maximum'] = int((4*datpts)/500)                    # update progress bar max value
         rootwin.update_idletasks()                              # force tkinter to refresh
         
@@ -272,42 +268,38 @@ class APIC:
         self.data.shape = (int(len(self.data)/4), 4)
         self.data = self.curvecorrect(self.data)                # apply linear fit corrections
     
-    def adc_peak_find(self,datpts):
+    def adc_peak_find(self,datpts,progbar,rootwin):
+        '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples,\n 
+        returns arrays of 1) 8 samples of peaks in ADC counts and times at the end of each peak in microseconds\n
+        from the start of the experiment.\n
+        self.ADCi(datpts,progbar,rootwin)\n
+        \t datpts: 64bit number for desired number of ADC samples\n
+        \t progbar: progressbar widget variable\n
+        \t rootwin: tkinter.TK() object (root frame/window object)'''   
         tick_count = 0
         self.sockdma.setblocking(1)                             # blocking socket waits for the buffer to be filled???
         self.samples = datpts                                   # update samples item
-        print(datpts)
-        #progbar['maximum'] = int((4*datpts)/2048)              # update progress bar max value
-        #rootwin.update_idletasks()                             # force tkinter to refresh
+
+        progbar['maximum'] = round(datpts/360)                  # update progress bar max value
+        rootwin.update_idletasks()                              # force tkinter to refresh
         readm = array("I",[0]*360)                              # Bytearray for receiving ADC data (with no mem allocation)
-        datadma = array("I",[])                               # ADC values numpy array
-        ##datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
-
+        self.data = array("I",[])                               # ADC values numpy array
+        datptsb = datpts.to_bytes(8,'little',signed=False)      # convert data to an 8 byte integer for sending
         self.sendcmd(2,0)
-        ##self.sock.sendto(datptsb,self.ipv4)                     # send num if data points to sample
+        self.sock.sendto(datptsb,self.ipv4)                     # send num if data points to sample
         
-        # Read data from socket into data and times in that order, given a predictable number of bytes coming through.
-        while len(datadma) < datpts:
-            
+        # Read data from socket until we reach desired number of data points
+        while len(self.data) < datpts:
+
             self.sockdma.recv_into(readm)
-            #tick_count+=1
-            datadma.extend(readm)
-            #progbar['value'] = tick_count                       # update the progress bar value
-            #rootwin.update()                                    # force tkinter to update - non-ideal solution
-        
+            tick_count+=1
+            self.data.extend(readm)
+            progbar['value'] = tick_count                       # update the progress bar value
+            rootwin.update()                                    # force tkinter to update - non-ideal solution
+
         # Save and return the arrays.
-        datadma = numpy.array(datadma,dtype='uint32')
-        #print(self.data)
-        data_time = datadma[0::2] + (1E-06 *  numpy.bitwise_and(numpy.right_shift(datadma[1::2],12),1048575))
-        data_adcmax = (datadma[1::2] & 4095)
-
-        datadma = []
-
-        numpy.savetxt('time.txt', data_time)
-
-        #plt.figure()
-        #plt.scatter(data_time_us,data_adcmax)
-        #plt.show()
-        #print(data_time)
-
-
+        self.data = numpy.array(self.data,dtype='uint32')
+        self.data_time = self.data[0::2] + (1E-06 *  numpy.bitwise_and(numpy.right_shift(self.data[1::2],12),1048575))
+        self.data = (self.data[1::2] & 4095)
+       
+        #numpy.savetxt('time.txt', data_time)
