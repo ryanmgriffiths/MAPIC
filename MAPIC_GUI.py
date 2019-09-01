@@ -386,7 +386,7 @@ def savesettings():
     fp.close()
 
 def adcwd():
-    apic.adc_peak_find(1000000)
+    apic.adc_peak_find(10000)
 
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
