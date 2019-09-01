@@ -31,7 +31,6 @@ This installs the following packages for python 3:
 * numpy
 * pyserial
 * matplotlib
-* future
 * scipy
 * pyusb -> used for flashing firmware to the board
 
@@ -72,24 +71,39 @@ Note that steps other than the final two only need to be carried out once to set
 
 ## Custom Micropython Code
 
-Added a new custom function to ```adc.c``` called ```adc.read_DMA```. This function enables ADC peakfinding with the analog watchdog from the STM32 HAL Drivers. Peaks will be sampled up to num_samples and the data continuously streamed out via UDP to an IPV4 address.
+Added a new custom function to ```adc.c``` called ```adc.read_DMA```. This function enables ADC peakfinding with the analog watchdog from the STM32 HAL Drivers. Peaks will be sampled up to num_samples and the data continuously streamed out via UDP to an IPV4 address. In single ADC mode:
 
 ```python
 # Necessary imports
 from pyb import ADC
 from machine import Pin
 
-adcpin = Pin("X12")             # set up ADC pin object
-adc = ADC(adcpin)               # create ADC object with the ADC pin
+adcpin = Pin("X12")             # set up ADC pin object on pin X12
+adc = ADC(adcpin, False)        # create ADC object with the ADC pin, triple mode false
 
-adc.read_DMA(num_samples,ipv4)  # init sampling process
-
+adc.read_DMA(num_samples,ipv4)
 # adc.read_DMA(num_samples,ipv4)
-# num_samples : integer number of peaks to sample, ideally multiple of 50
+# num_samples : integer number of peaks to sample, ideally multiple of 360
 # ipv4 : IPV4 address tuple e.g. ("192.168.1.1",5000) 
 # returns nothing
 ```
 
+One also has the option of configuring the DMA in triple interleaved mode, to do so, we start use similar code:
+
+```python
+# Necessary imports
+from pyb import ADC
+from machine import Pin
+
+adcpin = Pin("X12")             # set up ADC pin object on pin X12
+adc = ADC(adcpin, True)         # create ADC object with the ADC pin, triple mode true
+
+adc.read_interleaved(num_samples,ipv4)
+# adc.read_interleaved(num_samples,ipv4)
+# num_samples : integer number of peaks to sample, ideally multiple of 360
+# ipv4 : IPV4 address tuple e.g. ("192.168.1.1",5000) 
+# returns nothing
+```
 
 ## Operation
 
