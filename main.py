@@ -35,7 +35,7 @@ Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
 adc = ADC(Pin('X12'), False)                   # define ADC pin for pulse stretcher measurement
 #calibadc = ADC(Pin('X3'))               # define ADC pin for measuring shaper voltage
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
-pin_mode.value(1)                       # disable manual pulse clearing (i.e. pin -> low)
+pin_mode.value(1)                       # low -> automatic pulse clearing, high -> manual pulse clear
 clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
 polarpin = Pin('X6', Pin.OUT)           # define pin that chooses polarity   
 testpulsepin = Pin('X11',Pin.OUT)       # pin to enable internal test pulses on APIC
@@ -45,8 +45,6 @@ polarpin.value(0)                       # set to 1 for positive polarity
 sendbuf = array('H',[500])
 data = array('H',[0]*4)                 # buffer for writing adc interrupt data from adc.read_timed() in calibration() and ADCi()
 calibdata = array('H',[0]*4)            # buffer to store ADC data from calibadc
-tim = bytearray(4)                      # bytearray for microsecond, 4 byte timestamps
-t0=0                                    # time at the beginning of the experiment
 count=0                                 # counter for pulses read
 ratecounter = 0                         # counter for rate measurements
 STATE = "STARTUP"                       # state variable for applying startup settings etc. 
@@ -63,8 +61,8 @@ while wl_ap.status('stations')==[]:
 
 # SET UP THE NETWORK SOCKET FOR UDP
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-s.bind(('',8080))                       # network listens on port 8080
-cipv4 = ('192.168.4.16', 8080)          # destination for sending data
+s.bind(('',8080))                           # network listens on port 8080, any IP
+destipv4 = ('192.168.4.16', 8080)           # destination for sending data
 print("SOCKET BOUND")
 
 #==================================================================================#
@@ -73,7 +71,7 @@ print("SOCKET BOUND")
 
 def checkstate():
     a = STATE.encode('utf-8')
-    s.sendto(a, cipv4)
+    s.sendto(a, destipv4)
 
 def setstate():
     utime.sleep(0.1)
@@ -100,8 +98,8 @@ def Ir():
     if i2c.is_ready(0x2D) and i2c.is_ready(0x2C):
         gain = i2c.recv(1,addr=0x2D)
         threshold = i2c.recv(1,addr=0x2C)
-        s.sendto(gain,cipv4)
-        s.sendto(threshold,cipv4)
+        s.sendto(gain,destipv4)
+        s.sendto(threshold,destipv4)
     else:
         raise Exception
     return None
@@ -124,7 +122,7 @@ def Is():
     else:
         for idx,chip in enumerate(i2clist):
             scan[idx] = chip
-    s.sendto(scan, cipv4)
+    s.sendto(scan, destipv4)
     return None
 
 #==================================================================================#
@@ -141,11 +139,11 @@ def calibrate():
 
 def cbcal(line):
     #adc.read_timed(data,t2)
-    s.sendto(data,cipv4)
+    s.sendto(data,destipv4)
     #clearpin.value(1)
     #clearpin.value(0)
     calibadc.read_timed(calibdata,t2)
-    s.sendto(calibdata,cipv4)
+    s.sendto(calibdata,destipv4)
 """
 #==================================================================================#
 # RATE MEASUREMENT CODE
@@ -166,7 +164,7 @@ def rateaq():
     
     finalrate = round((ratecounter/(b/1000)))
     finalratebyte = finalrate.to_bytes(4,'little',False)
-    s.sendto(finalratebyte,cipv4)
+    s.sendto(finalratebyte,destipv4)
 
 def ratecount(line):
     global ratecounter
@@ -214,7 +212,7 @@ def callback(arg):
     if pos == 124:
         sendbuf[pos:pos+4] = data
         try:
-            s.sendto(sendbuf, cipv4)
+            s.sendto(sendbuf, destipv4)
         except:
             print("SEND FAILED")
     else:
@@ -252,9 +250,9 @@ pyb.enable_irq(irqstate)                    # re-enable irqs
 #==================================================================================#
 
 def read_DMA():
-    msg = s.recv(8)
+    msg = s.recv(4)
     mnum = int.from_bytes(msg,'little')
-    mnum=mnum*1.2
+    mnum = mnum+1000
     adc.read_dma(mnum)
 
 #==================================================================================#
@@ -265,17 +263,14 @@ def read_DMA():
 
 commands = {
     # bytes(bytearray([a,b])) : command function,
-    bytes(bytearray([0,0])) : Ir,                       # read first gain potentiometer, then threshold
-    bytes(bytearray([7,1])) : checkstate,               # check the state of the pybaord
-    bytes(bytearray([7,0])) : setstate,                 # set the current state of the board
-
-    bytes(bytearray([0,2])) : Is,                       # scan I2C addresses
-    bytes(bytearray([1,0])) : lambda : Iw(0x2D),        # write gain pot
-    bytes(bytearray([1,1])) : lambda : Iw(0x2C),        # write threshold pot
+    bytes(bytearray([0,0])) : Ir,                               # read first gain potentiometer, then threshold
+    bytes(bytearray([0,2])) : Is,                               # scan I2C addresses
+    bytes(bytearray([1,0])) : lambda : Iw(0x2D),                # write gain pot
+    bytes(bytearray([1,1])) : lambda : Iw(0x2C),                # write threshold pot
     
-    bytes(bytearray([2,0])) : read_DMA,                 # testing DMA interrupts measurements,
-    bytes(bytearray([2,1])) : ADCi,                     # ADC interrupts
-    bytes(bytearray([2,2])) : adc.read_interleaved,     # TODO: Implement this feature properly
+    bytes(bytearray([2,0])) : read_DMA,                         # testing DMA interrupts measurements,
+    bytes(bytearray([2,1])) : ADCi,                             # ADC interrupts
+    bytes(bytearray([2,2])) : adc.read_interleaved,             # TODO: Implement this feature properly - requires deinit adc ability
     
     bytes(bytearray([4,0])) : lambda : polarpin.value(0),       # Negative polarity
     bytes(bytearray([4,1])) : lambda : polarpin.value(1),       # Positive polarity
@@ -284,7 +279,10 @@ commands = {
     bytes(bytearray([5,1])) : rateaq,                           # measure sample rate
 
     bytes(bytearray([6,0])) : lambda: testpulsepin.value(0),    # disable test pulses
-    bytes(bytearray([6,1])) : lambda: testpulsepin.value(1)     # enable test pulses
+    bytes(bytearray([6,1])) : lambda: testpulsepin.value(1),     # enable test pulses
+
+    bytes(bytearray([7,1])) : checkstate,                       # check the state of the pybaord
+    bytes(bytearray([7,0])) : setstate,                         # set the current state of the board
 }
 
 #==================================================================================#
