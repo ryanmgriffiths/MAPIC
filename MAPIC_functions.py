@@ -1,16 +1,15 @@
 '''Module containing APIC Class with methods to control pyboard peripherals and the measurement protocols.'''
-import serial       # USB serial communication
 import socket       # Low level networking module
 import datetime     # for measuring rates
 import numpy
-import os           # OS implementation for file saving
+import os           # for file saving
 import json
 from array import array
 from tkinter import *
 import tkinter.ttk as ttk
 import time
 import matplotlib.pyplot as plt
-
+from scipy.stats import norm
 fp = open("MAPIC_utils/MAPIC_config.json","r")            # open the json config file in rw mode
 default = json.load(fp)                     # load default settings dictionary
 fp.close()
@@ -48,6 +47,12 @@ class APIC:
         self.ylabel = ""
         self.xlabel = ""
         
+        # Gaussian fit params
+        self.binvals = []
+        self.binedges = []
+        self.std = 0
+        self.mean = 0
+
         # ADC DMA stream acceptor socket
         self.sockdma = socket.socket(socket.AF_INET
             ,socket.SOCK_DGRAM)                                     # reinit socket object
@@ -279,19 +284,24 @@ class APIC:
         \t datpts: 64bit number for desired number of ADC samples\n
         \t progbar: progressbar widget variable\n
         \t rootwindow: tkinter.TK() object (root frame/window object)'''
+
         tick_count = 0
-        self.sockdma.setblocking(1)                             # blocking socket waits for the buffer to be filled???
+        self.sockdma.setblocking(1)                             # blocking socket waits for data
         self.samples = datpts                                   # update samples item
+
         progbar['value'] = 0
-        progbar['maximum'] = round(datpts/360)                  # update progress bar max value
+        progbar['maximum'] = round(datpts/380)                  # update progress bar max value
         rootwindow.update_idletasks()                           # force tkinter to refresh
-        readm = array("I",[0]*360)                              # Bytearray for receiving ADC data (with no mem allocation)
+        
+        readm = array("I",[0]*380)                              # Bytearray for receiving ADC data (with no mem allocation)
         self.data = array("I",[])                               # ADC values numpy array
         datptsb = datpts.to_bytes(4,'little',signed=False)      # convert data to an 8 byte integer for sending
+
         self.sendcmd(2,0)
         time.sleep(0.5)
         self.sock.sendto(datptsb,self.ipv4)                     # send num if data points to sample
-        a = datetime.datetime.now()
+        #a = datetime.datetime.now()
+        
         # Read data from socket until we reach desired number of data points
         while len(self.data) < datpts*2:
 
@@ -301,14 +311,15 @@ class APIC:
             progbar['value'] = tick_count                       # update the progress bar value
             rootwindow.update()                                 # force tkinter to update - non-ideal solution
 
-        progbar['value'] = round(datpts/360)
+        progbar['value'] = round(datpts/380)
         rootwindow.update()
         # TODO: Suppress terms with 0 adc measurement as these are result of recv_into buf not being filled.
         
         self.data = numpy.array(self.data,dtype='uint32')
         self.data_time = self.data[0::2] + (1E-06 *  numpy.bitwise_and(numpy.right_shift(self.data[1::2],12),1048575))
         self.data = (self.data[1::2] & 4095)
-        b = datetime.datetime.now()
-        print(len(self.data[self.data != 0]))
-        print(a)
-        print(b)
+        
+        #b = datetime.datetime.now()
+        #print(len(self.data[self.data != 0]))
+        #print(a)
+        #print(b)
