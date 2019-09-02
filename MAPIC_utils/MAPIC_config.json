@@ -11,13 +11,13 @@
  "title": "Internal Test Pulses",
  "calibgradient": 1,
  "caliboffset": 0,
- "bins": 200,
+ "bins": 20,
  "polarity": 1,
  "units": "ADU",
  "xlabel": "MAPIC output",
  "ylabel": "Counts",
  "boundaries": [
-  0,
-  3300
+  2450,
+  2525
  ]
 }
