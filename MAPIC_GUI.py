@@ -4,7 +4,6 @@ import numpy
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import serial
 import time
 from array import array
 import MAPIC_functions as MAPIC
@@ -140,12 +139,18 @@ def ADCi():
     histogram = plt.Figure(dpi=100)
     global ax1
     ax1 = histogram.add_subplot(111)
+
+    if apic.savemode:
+        apic.savedata(apic.data,'adc')            # save raw data
+        apic.raw_dat_count += 1
+    else:
+        pass
     
-    apic.hdat = numpy.average(apic.setunits(apic.data, default['units']), axis=1)        # average the ADC peak data over the columns
-    apic.hdat = apic.hdat[apic.hdat>0]                  # remove zeros (controvertial feature)
+    apic.data = numpy.average(apic.setunits(apic.data, default['units']), axis=1)        # average the ADC peak data over the columns
+    apic.data = apic.data[apic.data>0]                  # remove zeros (controvertial feature)
     
     # set titles and axis labels
-    ax1.hist(apic.hdat,apic.bins,apic.boundaries,color='b', edgecolor='black')
+    ax1.hist(apic.data,apic.bins,apic.boundaries,color='b', edgecolor='black')
     ax1.set_title(default['title'])
     ax1.set_xlabel(default['xlabel']+ (" (%s)") % (apic.units))
     ax1.set_ylabel(default['ylabel'])
@@ -156,11 +161,6 @@ def ADCi():
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
     apic.drain_socket()                     # drain socket to clear interrupt overflows
 
-    if apic.savemode:
-        apic.savedata(apic.data,'adc_count')            # save raw data
-        apic.raw_dat_count += 1
-    else:
-        pass
 
 def ADC_DMA():
     progress['value'] = 0                               # reset progressbar
@@ -185,12 +185,13 @@ def ADC_DMA():
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
 
     if apic.savemode:
-        apic.savedata(apic.data,'adc_count')            # save data
-        apic.savedata(apic.data_time,'time_data')       # save time data
+        apic.savedata(apic.data,'adc')            # save data
+        apic.savedata(apic.data_time,'time')       # save time data
         apic.raw_dat_count += 1
+        print("SAVED")
     else:
+        print("NOTSAVED")
         pass
-
 
 
 # Add ADC frame widgets
@@ -200,7 +201,7 @@ ADCi_label.grid(row=1,column=1)
 ADCi_entry = Entry(ADCframe,textvariable=numadc)
 ADCi_entry.grid(row=1,column=2)
 
-ADC_out = Button(ADCframe, command=ADCi,text='Start',width=10)#,state=DISABLED)
+ADC_out = Button(ADCframe, command=ADC_DMA,text='Start',width=10)#,state=DISABLED)
 ADC_out.grid(row=1,column=3)
 
 progress = ttk.Progressbar(ADCframe,value=0,maximum=apic.samples,length=350) # add a progress bar
@@ -246,8 +247,8 @@ def set_t():
     ax1.set_ylabel(ystr.get())
     apic.boundaries = (int(lowbound.get()),int(highbound.get()))
     
-    apic.hdat = apic.setunits(apic.hdat,unitvar.get())
-    ax1.hist(apic.hdat, int(cbins.get()), (int(lowbound.get()),int(highbound.get())), color='b', edgecolor='black')
+    apic.data = apic.setunits(apic.data,unitvar.get())
+    ax1.hist(apic.data, int(cbins.get()), (int(lowbound.get()),int(highbound.get())), color='b', edgecolor='black')
     
     bar1 = FigureCanvasTkAgg(histogram, root)   
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
@@ -264,8 +265,8 @@ def savefig():
     ax.set_ylabel(ystr.get())
     apic.boundaries = (int(lowbound.get()),int(highbound.get()))
     
-    apic.hdat = apic.setunits(apic.hdat,unitvar.get())
-    ax.hist(apic.hdat, int(cbins.get()), (int(lowbound.get()),int(highbound.get())), color='b', edgecolor='black')
+    apic.data = apic.setunits(apic.data,unitvar.get())
+    ax.hist(apic.data, int(cbins.get()), (int(lowbound.get()),int(highbound.get())), color='b', edgecolor='black')
 
     figtemp.savefig('histdata\histogram'+apic.createfileno(apic.raw_dat_count-1)+'.png')
 
@@ -415,7 +416,7 @@ def savesettings():
     fp.close()
 
 def adcwd():
-    apic.adc_peak_find(10000)
+    apic.adc_peak_find(10000,progress,root)
 
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
