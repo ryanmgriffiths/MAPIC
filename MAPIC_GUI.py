@@ -28,6 +28,13 @@ def setup_from_saved():
     apic.writeI2C(default['threshpos'],1)
     time.sleep(0.1)
     apic.setpolarity(setpolarity=default['polarity'])
+    t_entr.insert([0],default['title'])
+    x_entr.insert([0],default['xlabel']+ (" (%s)") % (apic.units))
+    y_entr.insert([0], default['ylabel'])
+    bins_entr.insert([0], default['bins'])
+    lowbound_entr.insert([0],default['boundaries'][0])
+    highbound_entr.insert([0], default['boundaries'][1])
+
     apic.drain_socket()
 
 def checkerror():
@@ -209,7 +216,6 @@ progress.grid(row=2,column=1,columnspan=3)
 
 #==================================================================================#
 # POLARITY FRAME
-# GRID: 2r 1c
 #==================================================================================#
 
 POL = IntVar()
@@ -236,6 +242,7 @@ unitvar = StringVar()
 lowbound = StringVar()
 highbound = StringVar()
 
+# CLEAR HISTOGRAM + SET NEW OPTIONS
 def set_t():
     ax1.cla()
     ax1.set_title(titlestr.get())
@@ -253,6 +260,7 @@ def set_t():
     bar1 = FigureCanvasTkAgg(histogram, root)   
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
 
+# SAVE HISTOGRAM WITH CURRENT SETTINGS
 def savefig():
     figtemp = plt.figure()
     ax = figtemp.add_subplot(111)
@@ -386,12 +394,6 @@ save_on.grid(row=1,column=1)
 
 menubar = Menu(root)
 
-def connect():
-    apic.sock.connect(default['ipv4'])
-
-def disconnect():
-    apic.sock.close()
-
 def quit():
     apic.sock.close()
     root.quit()
@@ -407,7 +409,6 @@ def savesettings():
     default['threshpos'] = apic.posTHRESH
     default['savemode'] = apic.savemode
     default['polarity'] = apic.polarity
-    default['units'] = apic.units
     default['title'] = apic.title
     default['bins'] = apic.bins
     default['boundaries'] = apic.boundaries
@@ -415,21 +416,13 @@ def savesettings():
     json.dump(default,fp,indent=1)
     fp.close()
 
-def adcwd():
-    apic.adc_peak_find(10000,progress,root)
-
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
+filemenu.add_command(label='Load',command=setup_from_saved)
 filemenu.add_command(label='Save', command=savesettings)
-filemenu.add_command(label="Connect", command=connect)
-filemenu.add_command(label="Disconnect", command=disconnect)
 filemenu.add_separator()
 filemenu.add_command(label="Exit", command=quit)
 menubar.add_cascade(label="Menu", menu=filemenu)
-
-helpmenu = Menu(menubar, tearoff=0)
-helpmenu.add_command(label="About", command=adcwd)
-menubar.add_cascade(label="Help", menu=helpmenu)
 
 root.config(menu=menubar)       # display menubar
 root.mainloop()                 # run main gui program

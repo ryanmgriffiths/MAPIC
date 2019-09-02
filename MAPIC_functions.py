@@ -38,7 +38,7 @@ class APIC:
         self.savemode = default['savemode']
         self.STATE = ""                             # currently unused
         self.errorstatus = ""
-        self.units = default['units']
+        self.units = 'ADU'
         self.hdat = numpy.array([])
         self.title = default['title']
         self.posGAIN = default['gainpos']
