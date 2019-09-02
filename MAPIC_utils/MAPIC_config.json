@@ -13,7 +13,7 @@
  "caliboffset": 0,
  "bins": 200,
  "polarity": 1,
- "units": "mV",
+ "units": "ADU",
  "xlabel": "MAPIC output",
  "ylabel": "Counts",
  "boundaries": [
