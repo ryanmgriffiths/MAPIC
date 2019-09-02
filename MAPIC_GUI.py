@@ -2,13 +2,13 @@ from tkinter import *
 import tkinter.ttk as ttk
 import numpy
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import time
 from array import array
 import MAPIC_functions as MAPIC
 import json
-
+from scipy.stats import norm
+import scipy.optimize as sciop
 #==================================================================================#
 # SETUP
 # Reload previous setup from json file,
@@ -64,7 +64,66 @@ histframe = LabelFrame(root, text='Graph Config')
 histframe.grid(row=7,column=1, columnspan=3,rowspan=5,sticky=NW)
 
 saveframe = LabelFrame(root, text='Savemode')
-saveframe.grid(row=7,column=4, rowspan=2, sticky=NW)
+saveframe.grid(row=12,column=1, rowspan=2, sticky=NW)
+
+normfitframe = LabelFrame(root, text='Gaussian Fit')
+normfitframe.grid(row=7,column=4,columnspan=1,rowspan=1)
+
+
+#==================================================================================#
+# NORMAL FIT FRAME
+#==================================================================================#
+nlowbound = StringVar()
+nhighbound = StringVar()
+
+def normfit():
+    binx = []
+    biny = []
+    for x, y in zip(apic.binedges[:-1],apic.binvals):
+        if x >= int(nlowbound.get()) and x <= int(nhighbound.get()):
+            binx.append(x)
+            biny.append(y)
+        else:
+            pass
+    
+    binx = numpy.array(binx)
+    biny = numpy.array(biny)
+    
+    apic.mean, apic.std = norm.fit(binx)
+    
+    #print(apic.mean, apic.std)
+    #gaussian_sf = numpy.sum(biny)
+    #print(gaussian_sf)
+
+    #biny = gaussian_sf*norm.pdf(binx, apic.mean, apic.std)
+    print(binx)
+    print(biny)
+    #print(biny)
+    def gaussian(x,A):
+        return A*numpy.exp(-0.5*((x-apic.mean)/apic.std)**2)
+        
+    
+    global ax
+    popt, pcov = sciop.curve_fit(gaussian, binx, biny)
+    print(popt)
+    biny = gaussian(binx,popt[0])
+    print(biny)
+    #FWHM_O = sciop.root(gaussian)
+    #print(FWHM_O.x)
+    ax.plot( binx, biny, color='r') #legend =r'$, \bar x = $' + str(apic.mean) + r'$, \sigma = $' + str(apic.std) + ', Resolution = ' + str((2*FWHM_pts)/apic.mean) )
+    #ax.legend()
+
+boundaries_label = Label(normfitframe, text = 'FIT BOUNDARIES')
+boundaries_label.grid(row=1,column=1,columnspan=3)
+
+normal_high_bound = Entry(normfitframe,textvariable=nhighbound, width=8)
+normal_high_bound.grid(row=2,column=3)
+
+to_divider = Label(normfitframe, text='to')
+to_divider.grid(row=2,column=2)
+
+normal_low_bound = Entry(normfitframe,textvariable=nlowbound, width=8)
+normal_low_bound.grid(row=2,column=1)
 
 #==================================================================================#
 # I2C TOOLS FRAME:
@@ -144,8 +203,8 @@ def ADCi():
 
     global histogram
     histogram = plt.Figure(dpi=100)
-    global ax1
-    ax1 = histogram.add_subplot(111)
+    global ax
+    ax = histogram.add_subplot(111)
 
     if apic.savemode:
         apic.savedata(apic.data,'adc')            # save raw data
@@ -157,10 +216,10 @@ def ADCi():
     apic.data = apic.data[apic.data>0]                  # remove zeros (controvertial feature)
     
     # set titles and axis labels
-    ax1.hist(apic.data,apic.bins,apic.boundaries,color='b', edgecolor='black')
-    ax1.set_title(default['title'])
-    ax1.set_xlabel(default['xlabel']+ (" (%s)") % (apic.units))
-    ax1.set_ylabel(default['ylabel'])
+    apic.binvals, apic.binedges, patchs = ax.hist(apic.data,apic.bins,apic.boundaries,color='b', edgecolor='black')
+    ax.set_title(default['title'])
+    ax.set_xlabel(default['xlabel']+ (" (%s)") % (apic.units))
+    ax.set_ylabel(default['ylabel'])
         
     # add the plot to the gui
     global bar1
@@ -176,15 +235,27 @@ def ADC_DMA():
     
     global histogram
     histogram = plt.Figure(dpi=100)
-    global ax1
-    ax1 = histogram.add_subplot(111)
+    global ax
+    ax = histogram.add_subplot(111)
+    ax.minorticks_on()
+    ax.tick_params(axis='y', which ='major',direction='in', width=1, length=16,right=True,left=True )
+    ax.tick_params(axis='y', which='minor',direction='in',width =1, length=8,right=True,left=True )
+    
+    ax.tick_params(axis='x', which ='major',direction='in', width=1, length=5,bottom=True,top=True )
+    ax.tick_params(axis='x', which='minor',direction='in',width =1, length=3,bottom=True,top=True)
+
     apic.data = apic.setunits(apic.data, default['units'])
     # apic.data_time -> time with us resolution in same order as above
 
-    ax1.hist(apic.data,apic.bins,apic.boundaries,color='b', edgecolor='black')
-    ax1.set_title(default['title'])
-    ax1.set_xlabel(default['xlabel']+ (" (%s)") % (apic.units))
-    ax1.set_ylabel(default['ylabel'])
+    apic.binvals, apic.binedges, patchs = ax.hist(apic.data,apic.bins,apic.boundaries,color='b', edgecolor='black')
+    ax.set_title(default['title'])
+    ax.set_xlabel(default['xlabel']+ (" (%s)") % (apic.units))
+    ax.set_ylabel(default['ylabel'])
+
+    if nlowbound.get == "" or nhighbound.get() == "":
+        pass
+    else:
+        normfit()
 
     # add the plot to the gui
     global bar1
@@ -244,41 +315,55 @@ highbound = StringVar()
 
 # CLEAR HISTOGRAM + SET NEW OPTIONS
 def set_t():
-    ax1.cla()
-    ax1.set_title(titlestr.get())
-    ax1.set_xlabel(xstr.get())
+    ax.cla()
+    ax.set_title(titlestr.get())
+    ax.set_xlabel(xstr.get())
     apic.title = titlestr.get()
     apic.xlabel = xstr.get()+(" (%s)" % (unitvar.get()))
     apic.ylabel = ystr.get()
     apic.bins = int(cbins.get())
-    ax1.set_ylabel(ystr.get())
+    ax.set_ylabel(ystr.get())
     apic.boundaries = (int(lowbound.get()),int(highbound.get()))
-    
+    ax.minorticks_on()
+    ax.tick_params(axis='y', which ='major',direction='in', width=1, length=16,right=True,left=True )
+    ax.tick_params(axis='y', which='minor',direction='in',width =1, length=8,right=True,left=True )
+
+    ax.tick_params(axis='x', which ='major',direction='in', width=1, length=6,bottom=True,top=True )
+    ax.tick_params(axis='x', which='minor',direction='in',width =1, length=3,bottom=True,top=True)
     apic.data = apic.setunits(apic.data,unitvar.get())
-    ax1.hist(apic.data, int(cbins.get()), (int(lowbound.get()),int(highbound.get())), color='b', edgecolor='black')
-    
+    apic.binvals, apic.binedges, patchs = ax.hist(apic.data, int(cbins.get()), (int(lowbound.get()),int(highbound.get())), color='b', edgecolor='black')
+    if nlowbound.get == "" or nhighbound.get() == "":
+        pass
+    else:
+        normfit()    
     bar1 = FigureCanvasTkAgg(histogram, root)   
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
 
 # SAVE HISTOGRAM WITH CURRENT SETTINGS
 def savefig():
     figtemp = plt.figure()
-    ax = figtemp.add_subplot(111)
-    ax.set_title(titlestr.get())
+    ax1 = figtemp.add_subplot(111)
+    ax1.set_title(titlestr.get())
     apic.title = titlestr.get()
     apic.xlabel = xstr.get()+(" (%s)" % (unitvar.get()))
-    ax.set_xlabel(apic.xlabel)
+    ax1.set_xlabel(apic.xlabel)
     apic.ylabel = ystr.get()
     apic.bins = int(cbins.get())
-    ax.set_ylabel(ystr.get())
+    ax1.set_ylabel(ystr.get())
     apic.boundaries = (int(lowbound.get()),int(highbound.get()))
+    ax1.minorticks_on()
+    ax1.tick_params(axis='y', which ='major',direction='in', width=1, length=16,right=True,left=True )
+    ax1.tick_params(axis='y', which='minor',direction='in',width =1, length=8,right=True,left=True )
     
-    apic.data = apic.setunits(apic.data,unitvar.get())
-    ax.hist(apic.data, int(cbins.get()), (int(lowbound.get()),int(highbound.get())), color='b', edgecolor='black')
+    ax1.tick_params(axis='x', which ='major',direction='in', width=1, length=5,bottom=True,top=True )
+    ax1.tick_params(axis='x', which='minor',direction='in',width =1, length=3,bottom=True,top=True)
 
+    apic.data = apic.setunits(apic.data,unitvar.get())
+    apic.binvals, apic.binedges, patchs = ax1.hist(apic.data, int(cbins.get()), (int(lowbound.get()),int(highbound.get())), color='b', edgecolor='black')
+    
     figtemp.savefig('histdata\histogram'+apic.createfileno(apic.raw_dat_count-1)+'.png')
 
-ewidth = 30
+ewidth = 35
 t_entr = Entry(histframe, textvariable = titlestr, width =ewidth)
 t_entr.grid(row=1,column=2,columnspan=2)
 x_entr = Entry(histframe, textvariable = xstr, width = ewidth)
@@ -326,7 +411,7 @@ bound_label.grid(row=5,column=1,sticky=W)
 
 errorbox = Message(root,text='Error messages.',
     bg='white',relief=RIDGE,width=220)
-errorbox.grid(row=7,column=5,sticky=NW)
+errorbox.grid(row=12,column=2,sticky=NW)
 
 def f(x,a,b,c):
     ''' Second order tranfer function to fit to pulse strecher input/output curve.\n
@@ -376,6 +461,7 @@ ratelabel.grid(row=2,column=2)
 
 caliblabel = Label(diagnostic,text='---')
 caliblabel.grid(row=1,column=2)
+
 #==================================================================================#
 # SAVEMODE FRAME
 #==================================================================================#
