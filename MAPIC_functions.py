@@ -1,18 +1,19 @@
 '''Module containing APIC Class with methods to control pyboard peripherals and the measurement protocols.'''
-import socket       # Low level networking module
-import datetime     # for measuring rates
-import numpy
-import os           # for file saving
-import json
+
+import matplotlib.pyplot as plt
+import tkinter.ttk as ttk
 from array import array
 from tkinter import *
-import tkinter.ttk as ttk
+import datetime     # for measuring rates
+import socket       # Low level networking module
+import numpy
+import json
 import time
-import matplotlib.pyplot as plt
-from scipy.stats import norm
-fp = open("MAPIC_utils/MAPIC_config.json","r")            # open the json config file in rw mode
-default = json.load(fp)                     # load default settings dictionary
-fp.close()
+import os           # for file saving
+
+fp = open("MAPIC_utils/MAPIC_config.json","r")              # open the json config file in read mode
+default = json.load(fp)                                     # load default settings dictionary
+fp.close()                                                  # close so we can open again later
 
 class APIC:
     '''Class representing the APIC. Methods invoke measurement and information 
@@ -29,16 +30,15 @@ class APIC:
         self.sock.bind(('',8080))
         self.polarity = default['polarity']
 
-        # DATA STORAGE AND VARIABLES
+        # Misc variables used by the ADC DAQ code
         self.raw_dat_count = 0                      #  counter for the number of raw data files
+        self.samples = 100
+        
+        # Default settings for GUI
+        self.units = 'ADU'
+        self.savemode = default['savemode']
         self.calibgradient = default['calibgradient']
         self.caliboffset = default['caliboffset']
-        self.samples = 100
-        self.savemode = default['savemode']
-        self.STATE = ""                             # currently unused
-        self.errorstatus = ""
-        self.units = 'ADU'
-        self.hdat = numpy.array([])
         self.title = default['title']
         self.posGAIN = default['gainpos']
         self.posTHRESH = default['threshpos']
@@ -46,14 +46,17 @@ class APIC:
         self.bins = default['bins']
         self.ylabel = ""
         self.xlabel = ""
-        
-        # Gaussian fit params
-        self.binvals = []
-        self.binedges = []
-        self.std = 0
-        self.mean = 0
 
-        # ADC DMA stream acceptor socket
+        self.STATE = ""                             # currently unused
+        self.errorstatus = ""                       # currently unused
+
+        # Gaussian fit parameters
+        self.binvals = []                           # histogram bin values
+        self.binedges = []                          # histogram bin edge positions
+        self.std = 0                                # standard deviation
+        self.mean = 0                               # mean
+
+        # ADC-DMA stream acceptor socket
         self.sockdma = socket.socket(socket.AF_INET
             ,socket.SOCK_DGRAM)                                     # reinit socket object
         self.sockdma.bind(('', 9000))                                 # bind socket to receive
@@ -66,27 +69,24 @@ class APIC:
             else:
                 pass
         
-        #self.ser = serial.Serial(address,115200,timeout=tout)          # connect to the serial port & init serial obj (legacy behaviour)
-
     def createfileno(self,fncount):
-        '''A function that is used to create the 4 digit file number endings based on latest version'''
+        '''A function used to create the 4 digit file number endings based on the latest file number 
+        version in /histdata directory.'''
         
-        fncount=str(fncount)                        # int fncount to string
+        fncount=str(fncount)                        # integer fncount to string
         fnstring = list('0000')                     # convert to mutable list
         fnstring[-len(fncount):] = list(fncount)    # replace last x terms with new version
-        
-        return ''.join(fnstring)
+        return ''.join(fnstring)                    # return file number string
     
     def drain_socket(self):
-        '''Empty socket of any interrupt overflow data, call after every instance of interrupt usage.\n
-        Reset timeout to 10s after each call.'''
-        self.sock.settimeout(0)     # set timeout 0
-        
+        '''Empty socket of any interrupt overflow data, useful to call after instances of interrupt usage.\n
+        Reset timeout to default after each call.'''
+        self.sock.settimeout(0)         # set timeout 0 -> nonblocking socket
         while True:
             try:
-                self.sock.recv(2048)   # read 2 byte chunks until none left -> timeout
+                self.sock.recv(2048)    # read 2048 byte chunks until none left -> timeout
             except:
-                break               # when sock.recv timeout break loop
+                break                   # when sock.recv timeout break loop
         
         self.sock.settimeout(default['timeout'])
 
@@ -99,7 +99,9 @@ class APIC:
         self.sock.sendto(bytearray([a,b]),self.ipv4)
 
 #===================================================================================================
-# STATE OPERATIONS - CURRENTLY UNUSED BUT MAY BE USEFUL
+# STATE OPERATIONS - CURRENTLY UNUSED BUT MAY BE USEFUL IN THE FUTURE
+# UPDATE BOARD STATE WITH SENDSTATE
+# RECEIVE BOARD STATE WITH CHECKSTATE
 #===================================================================================================
 
     def checkstate(self):
@@ -123,6 +125,10 @@ class APIC:
     
 #===================================================================================================
 # I2C OPERATIONS
+# TWO POTENTIOMETERS - WIDTH AND GAIN
+# SCAN
+# READ 
+# WRITE
 #===================================================================================================
     
     def scanI2C(self):
@@ -139,7 +145,7 @@ class APIC:
         
         self.sendcmd(0,0)
         self.posGAIN = int.from_bytes(self.sock.recv(1),'little')           # receive + update gain position variable
-        self.posTHRESH = int.from_bytes(self.sock.recv(1),'little')          # receive + update threhold position variable
+        self.posTHRESH = int.from_bytes(self.sock.recv(1),'little')         # receive + update threhold position variable
     
     def writeI2C(self,pos,pot):
         '''Writes 8 bit values to one the two digital potentiometers.\n 
@@ -149,14 +155,18 @@ class APIC:
             \t pot: takes value 0,1 for threshold and gain pots respectively'''
         
         self.sendcmd(1,pot)
-        time.sleep(0.5)
         self.sock.sendto(bytearray([pos]),self.ipv4)
     
 #===================================================================================================
 # POLTTING AND DATA ANALYSIS
 #===================================================================================================
     
-    def setunits(self,data,_units):
+    def setunits(self, data, _units):
+        '''Changes units of data or leaves unchanged if you attempt to change to the same unit again.\n
+        self.setunits(self, data, _units)\n
+        Arguments:
+        \t data: array like data to change units of 
+        \t _units: string specifying the desired units, can be "mV" or "ADU".'''
         if self.units == _units:
             return data
         elif self.units != _units and _units == 'mV':
@@ -165,6 +175,8 @@ class APIC:
         elif self.units != _units and _units == 'ADU':
             self.units = 'ADU'
             return data/(3300/4096)
+        else:
+            raise ValueError('Unit is not supported. Acceptable values are "mV" or "ADU"')
 
     def curvecorrect(self, Input):
         return ((Input + self.caliboffset)/self.calibgradient)
@@ -176,7 +188,7 @@ class APIC:
         self.polarity= setpolarity
 
     def savedata(self,data,datatype):
-        ''' Save numpy data.'''
+        ''' Save numpy data, uses different names for data types.'''
         if datatype=='adc':
             numpy.savetxt('histdata\ADC_count'+self.createfileno(self.raw_dat_count)+'.txt',data)
         elif datatype=='time':
@@ -241,8 +253,8 @@ class APIC:
     
     def ADCi(self,datpts,progbar,rootwindow):
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples,\n 
-        returns array of 4 samples of peaks in ADC counts.
-        self.ADCi(datpts,progbar,rootwindow)\n
+        returns array of 4 samples of peaks in ADC counts. Uses read_timed polling method from Micropython. \n
+        self.ADCi(datpts, progbar, rootwindow)\n
         \t datpts: 64bit number for desired number of ADC samples\n
         \t progbar: progressbar widget variable\n
         \t rootwindow: tkinter.TK() object (root frame/window object)'''
@@ -267,7 +279,7 @@ class APIC:
             self.sock.recv_into(readm)
             tick_count+=1
             self.data.extend(readm)
-            progbar['value'] = tick_count                       # update the progress bar value
+            progbar['value'] = tick_count                           # update the progress bar value
             rootwindow.update()                                    # force tkinter to update - non-ideal solution
         
         self.drain_socket()
@@ -293,33 +305,31 @@ class APIC:
         progbar['maximum'] = round(datpts/380)                  # update progress bar max value
         rootwindow.update_idletasks()                           # force tkinter to refresh
         
-        readm = array("I",[0]*380)                              # Bytearray for receiving ADC data (with no mem allocation)
-        self.data = array("I",[])                               # ADC values numpy array
-        datptsb = datpts.to_bytes(4,'little',signed=False)      # convert data to an 8 byte integer for sending
+        readm = array("I",[0]*380)                              # unsigned int array.array type to receive data
+        self.data = array("I",[])                               # unsigned int array to store data in RAM
+        datptsb = datpts.to_bytes(4,'little',signed=False)      # convert data to an 32 bit integer for sending
 
-        self.sendcmd(2,0)
-        time.sleep(0.5)
+        self.sendcmd(2,0)                                       # start adc_dma routine on board
+        time.sleep(0.5)                                         # ensure the board does not miss the data transmission below
         self.sock.sendto(datptsb,self.ipv4)                     # send num if data points to sample
         #a = datetime.datetime.now()
         
-        # Read data from socket until we reach desired number of data points
+        # Read data from socket until we reach desired number of data points (*2 because 32bit second counter term also)
         while len(self.data) < datpts*2:
 
             self.sockdma.recv_into(readm)
             tick_count+=1
             self.data.extend(readm)                             # extend array - faster than numpy
-            progbar['value'] = tick_count                       # update the progress bar value
-            rootwindow.update()                                 # force tkinter to update - non-ideal solution
+            progbar['value'] = tick_count                       # update the progress bar value for 1 tick
+            rootwindow.update()                                 # force tkinter to update
 
-        progbar['value'] = round(datpts/380)
+        progbar['value'] = round(datpts/380)                    # ensure progress bar is full
         rootwindow.update()
-        # TODO: Suppress terms with 0 adc measurement as these are result of recv_into buf not being filled.
+
+        # TODO: Suppress terms with 0 adc measurement as these are result of recv_into buf not being filled?
         
-        self.data = numpy.array(self.data,dtype='uint32')
-        self.data_time = self.data[0::2] + (1E-06 *  numpy.bitwise_and(numpy.right_shift(self.data[1::2],12),1048575))
-        self.data = (self.data[1::2] & 4095)
-        
-        #b = datetime.datetime.now()
-        #print(len(self.data[self.data != 0]))
-        #print(a)
-        #print(b)
+        self.data = numpy.array(self.data,dtype='uint32')       #change data to numpy array
+
+        # Bitwise operations to extract the encoded data from the UDP stream.
+        self.data_time = self.data[0::2] + (1E-06 *  numpy.bitwise_and(numpy.right_shift(self.data[1::2],12),1048575))  
+        self.data = (self.data[1::2] & 4095)                    # ADC data
