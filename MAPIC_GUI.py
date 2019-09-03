@@ -34,7 +34,8 @@ def load_settings():
     apic.drain_socket()
 
 def checkerror():
-    errorbox.config(text=apic.errorstatus)
+    # POPUP BOX WITH ERROR STATUS
+    return None
 
 apic = MAPIC.APIC(default['timeout'],default['ipv4']) # connect to the APIC
 
@@ -116,14 +117,14 @@ def read():
         apic.readI2C()
         Ireadlabel.config(text='Gain: %i , Threshold: %i' % (apic.posGAIN,apic.posTHRESH))
     except:
-        errorbox.config(text='TIMEOUT')
+        apic.errorstatus = 'TIMEOUT'
 
 def scan():
     try:
         apic.scanI2C()      
         Iscanlabel.config(text=str(apic.I2Caddrs))
     except:
-        errorbox.config(text='TIMEOUT')
+        apic.errorstatus = 'TIMEOUT'
 
 # Define int variables for the widgets to reference
 var0 = IntVar()
@@ -381,10 +382,6 @@ bound_label.grid(row=5,column=1,sticky=W)
 #==================================================================================#
 # CALIBRATION FRAME
 #==================================================================================#
-
-errorbox = Message(root,text='Error messages.',
-    bg='white',relief=RIDGE,width=220)
-errorbox.grid(row=12,column=2,sticky=NW)
 
 def f(x,a,b,c):
     ''' Second order tranfer function to fit to pulse strecher input/output curve.\n
