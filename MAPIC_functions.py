@@ -36,7 +36,6 @@ class APIC:
         
         # Default settings for GUI
         self.units = 'ADU'
-        self.savemode = default['savemode']
         self.calibgradient = default['calibgradient']
         self.caliboffset = default['caliboffset']
         self.title = default['title']

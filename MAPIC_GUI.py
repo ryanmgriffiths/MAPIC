@@ -17,21 +17,17 @@ import scipy.optimize as sciop
 # setup each frame with a label and allocate sizes with grid.
 #==================================================================================#
 
-fp = open("MAPIC_utils/MAPIC_config.json","r")            # load config file in read mode
-default = json.load(fp)                     # load default settings dictionary
+fp = open("MAPIC_utils/MAPIC_config.json","r")          # load config file in read mode
+default = json.load(fp)                                 # load default settings dictionary
 fp.close()
 
-def setup_from_saved():
+def load_settings():
     ''' Write default settings to the pyboard. '''
     apic.writeI2C(default['gainpos'],0)
     time.sleep(0.1)
     apic.writeI2C(default['threshpos'],1)
     time.sleep(0.1)
     apic.setpolarity(setpolarity=default['polarity'])
-    t_entr.insert([0],default['title'])
-    x_entr.insert([0],default['xlabel']+ (" (%s)") % (apic.units))
-    y_entr.insert([0], default['ylabel'])
-    bins_entr.insert([0], default['bins'])
     lowbound_entr.insert([0],default['boundaries'][0])
     highbound_entr.insert([0], default['boundaries'][1])
 
@@ -42,7 +38,7 @@ def checkerror():
 
 apic = MAPIC.APIC(default['timeout'],default['ipv4']) # connect to the APIC
 
-#setup_from_saved()
+#load_settings()
 
 root = Tk()
 root.title('WIRELESS MAPIC')
@@ -62,9 +58,6 @@ polarityframe.grid(row=5,column=4,rowspan=2)
 
 histframe = LabelFrame(root, text='Graph Config')
 histframe.grid(row=7,column=1, columnspan=3,rowspan=5,sticky=NW)
-
-saveframe = LabelFrame(root, text='Savemode')
-saveframe.grid(row=12,column=1, rowspan=2, sticky=NW)
 
 normfitframe = LabelFrame(root, text='Gaussian Fit')
 normfitframe.grid(row=7,column=4,columnspan=1,rowspan=1)
@@ -88,30 +81,16 @@ def normfit():
     
     binx = numpy.array(binx)
     biny = numpy.array(biny)
-    
     apic.mean, apic.std = norm.fit(binx)
-    
-    #print(apic.mean, apic.std)
-    #gaussian_sf = numpy.sum(biny)
-    #print(gaussian_sf)
 
-    #biny = gaussian_sf*norm.pdf(binx, apic.mean, apic.std)
-    print(binx)
-    print(biny)
-    #print(biny)
     def gaussian(x,A):
         return A*numpy.exp(-0.5*((x-apic.mean)/apic.std)**2)
-        
-    
+            
     global ax
     popt, pcov = sciop.curve_fit(gaussian, binx, biny)
     print(popt)
     biny = gaussian(binx,popt[0])
-    print(biny)
-    #FWHM_O = sciop.root(gaussian)
-    #print(FWHM_O.x)
-    ax.plot( binx, biny, color='r') #legend =r'$, \bar x = $' + str(apic.mean) + r'$, \sigma = $' + str(apic.std) + ', Resolution = ' + str((2*FWHM_pts)/apic.mean) )
-    #ax.legend()
+    ax.plot( binx, biny, color='r') #legend =r'$, \bar x = $' + str(apic.mean) + r'$, \sigma = $' + str(apic.std) + ', Resolution = ' + str((2*FWHMval)/apic.mean) )
 
 boundaries_label = Label(normfitframe, text = 'FIT BOUNDARIES')
 boundaries_label.grid(row=1,column=1,columnspan=3)
@@ -191,7 +170,9 @@ div = Label(I2Cframe, text='           ').grid(row=1,column=2,rowspan=4)
 
 #==================================================================================#
 # ADC CONTROL FRAME
-# GRID: 2R 3C
+# ADCi: is legacy python ADC Datalogging routine.
+# ADC_DMA: is designed to be used with the DMA stream and so contains the bit shifting
+# needed to extract data. Also the plotting is more advanced.
 #==================================================================================#
 numadc=StringVar()
 
@@ -206,11 +187,8 @@ def ADCi():
     global ax
     ax = histogram.add_subplot(111)
 
-    if apic.savemode:
-        apic.savedata(apic.data,'adc')            # save raw data
-        apic.raw_dat_count += 1
-    else:
-        pass
+    apic.savedata(apic.data,'adc')            # save raw data
+    apic.raw_dat_count += 1
     
     apic.data = numpy.average(apic.setunits(apic.data, default['units']), axis=1)        # average the ADC peak data over the columns
     apic.data = apic.data[apic.data>0]                  # remove zeros (controvertial feature)
@@ -262,14 +240,9 @@ def ADC_DMA():
     bar1 = FigureCanvasTkAgg(histogram, root)   
     bar1.get_tk_widget().grid(row=1,column=7,columnspan=1,rowspan=10)
 
-    if apic.savemode:
-        apic.savedata(apic.data,'adc')            # save data
-        apic.savedata(apic.data_time,'time')       # save time data
-        apic.raw_dat_count += 1
-        print("SAVED")
-    else:
-        print("NOTSAVED")
-        pass
+    apic.savedata(apic.data,'adc')            # save data
+    apic.savedata(apic.data_time,'time')       # save time data
+    apic.raw_dat_count += 1
 
 
 # Add ADC frame widgets
@@ -463,18 +436,6 @@ caliblabel = Label(diagnostic,text='---')
 caliblabel.grid(row=1,column=2)
 
 #==================================================================================#
-# SAVEMODE FRAME
-#==================================================================================#
-savemode_var = BooleanVar()
-
-def setsavemode():
-    apic.savemode = savemode_var.get()
-
-save_on = Checkbutton(saveframe, text=("%r")%(apic.savemode),
-     command = setsavemode, onvalue=True, offvalue=False, variable=savemode_var)
-save_on.grid(row=1,column=1)
-
-#==================================================================================#
 # TOP MENU FUNCTIONS + OPTIONS
 #==================================================================================#
 
@@ -493,7 +454,6 @@ def savesettings():
     default['timeout'] = apic.tout
     default['gainpos'] = apic.posGAIN
     default['threshpos'] = apic.posTHRESH
-    default['savemode'] = apic.savemode
     default['polarity'] = apic.polarity
     default['title'] = apic.title
     default['bins'] = apic.bins
