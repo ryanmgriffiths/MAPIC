@@ -171,31 +171,32 @@ div = Label(I2Cframe, text='           ').grid(row=1,column=2,rowspan=4)
 
 #==================================================================================#
 # ADC CONTROL FRAME
-# ADCi: is legacy python ADC Datalogging routine.
+# ADC_IT_POLL: is legacy python ADC Datalogging routine.
 # ADC_DMA: is designed to be used with the DMA stream and so contains the bit shifting
 # needed to extract data. Also the plotting is more advanced.
 #==================================================================================#
 numadc=StringVar()
 
-def ADCi():
+def ADC_IT_POLL():
     apic.drain_socket()
     progress['value'] = 0                               # reset progressbar
     datapoints = int(numadc.get())                      # get desired number of samples from the tkinter text entry
-    apic.ADCi(datapoints,progress,root)                 # take data using ADCi protocol
+    apic.ADC_IT_poll(datapoints,progress,root)          # take data using ADC_IT_poll protocol
 
     global histogram
     histogram = plt.Figure(dpi=100)
     global ax
     ax = histogram.add_subplot(111)
 
-    apic.savedata(apic.data,'adc')            # save raw data
+    apic.savedata(apic.data,'adc')                      # save raw data
     apic.raw_dat_count += 1
     
-    apic.data = numpy.average(apic.setunits(apic.data, default['units']), axis=1)        # average the ADC peak data over the columns
-    apic.data = apic.data[apic.data>0]                  # remove zeros (controvertial feature)
+    apic.data = numpy.average(apic.setunits(apic.data, default['units']), axis=1)   # average the ADC peak data over the columns
+    apic.data = apic.data[apic.data>0]                                              # remove zeros (controvertial feature)
     
-    # set titles and axis labels
     apic.binvals, apic.binedges, patchs = ax.hist(apic.data,apic.bins,apic.boundaries,color='b', edgecolor='black')
+
+    # set titles and axis labels
     ax.set_title(default['title'])
     ax.set_xlabel(default['xlabel']+ (" (%s)") % (apic.units))
     ax.set_ylabel(default['ylabel'])
@@ -440,6 +441,7 @@ menubar = Menu(root)
 
 def quit():
     apic.sock.close()
+    apic.sockdma.close()
     root.quit()
 
 def savesettings():

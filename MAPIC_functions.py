@@ -250,10 +250,10 @@ class APIC:
 # ADC DAQ OPERATIONS
 #===================================================================================================
     
-    def ADCi(self,datpts,progbar,rootwindow):
+    def ADC_IT_poll(self,datpts,progbar,rootwindow):
         '''Hardware interrupt routine for ADC measurement. Sends an 8 byte number for the  number of samples,\n 
         returns array of 4 samples of peaks in ADC counts. Uses read_timed polling method from Micropython. \n
-        self.ADCi(datpts, progbar, rootwindow)\n
+        self.ADC_IT_poll(datpts, progbar, rootwindow)\n
         \t datpts: 64bit number for desired number of ADC samples\n
         \t progbar: progressbar widget variable\n
         \t rootwindow: tkinter.TK() object (root frame/window object)'''

@@ -43,7 +43,7 @@ polarpin.value(0)                       # set to 1 for positive polarity
 
 # DATA STORAGE AND COUNTERS
 sendbuf = array('H',[500])
-data = array('H',[0]*4)                 # buffer for writing adc interrupt data from adc.read_timed() in calibration() and ADCi()
+data = array('H',[0]*4)                 # buffer for writing adc interrupt data from adc.read_timed() in calibration() and ADC_IT_poll()
 calibdata = array('H',[0]*4)            # buffer to store ADC data from calibadc
 count=0                                 # counter for pulses read
 ratecounter = 0                         # counter for rate measurements
@@ -179,7 +179,7 @@ def ratecount(line):
 # concurrent interrupts.                                
 #==================================================================================#
 
-def ADCi():
+def ADC_IT_poll():
     
     global extint
     global count
@@ -197,7 +197,7 @@ def ADCi():
         pass
     
     extint.disable()
-    print("ADCI MEASUREMENT COMPLETE")
+    print("MEASUREMENT COMPLETE")
     drain_socket()
 
 # ISR CALLBACK FUNCTION
@@ -227,6 +227,7 @@ def callback(arg):
 def cb(line):
     micropython.schedule(callback,'a')
 
+
 # ENABLE INTERRUPT CHANNELS
 irqstate=pyb.disable_irq()                  # disable all interrupts during initialisation
 #calibint = ExtInt('X1',ExtInt.IRQ_RISING,
@@ -246,7 +247,7 @@ pyb.enable_irq(irqstate)                    # re-enable irqs
 #==================================================================================#
 # C ADC data stream method
 # Wait for this to complete before attempting any other actions.
-# Uses a different ADC setup from python level ADCi.
+# Uses a different ADC setup from python level ADC_IT_poll.
 #==================================================================================#
 
 def read_DMA():
@@ -269,8 +270,9 @@ commands = {
     bytes(bytearray([1,1])) : lambda : Iw(0x2C),                # write threshold pot
     
     bytes(bytearray([2,0])) : read_DMA,                         # testing DMA interrupts measurements,
-    bytes(bytearray([2,1])) : ADCi,                             # ADC interrupts
-    bytes(bytearray([2,2])) : adc.read_interleaved,             # TODO: Implement this feature properly - requires deinit adc ability
+    bytes(bytearray([2,1])) : ADC_IT_poll,                      # legacy python ADC interrupts method
+    
+    bytes(bytearray([2,2])) : adc.read_interleaved,             # TODO: Implement this feature properly - requires deinit adc ability??
     
     bytes(bytearray([4,0])) : lambda : polarpin.value(0),       # Negative polarity
     bytes(bytearray([4,1])) : lambda : polarpin.value(1),       # Positive polarity
