@@ -154,6 +154,7 @@ class APIC:
             \t pot: takes value 0,1 for threshold and gain pots respectively'''
         
         self.sendcmd(1,pot)
+        time.sleep(0.2)         # NEED A DELAY OR UDP PACKET CAN BE MISSED
         self.sock.sendto(bytearray([pos]),self.ipv4)
     
 #===================================================================================================
