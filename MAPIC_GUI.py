@@ -28,8 +28,8 @@ def load_settings():
     apic.writeI2C(default['threshpos'],1)
     time.sleep(0.1)
     apic.setpolarity(setpolarity=default['polarity'])
-    lowbound_entr.insert([0],default['boundaries'][0])
-    highbound_entr.insert([0], default['boundaries'][1])
+    time.sleep(0.1)
+
 
     apic.drain_socket()
 
@@ -42,7 +42,7 @@ apic = MAPIC.APIC(default['timeout'],default['ipv4']) # connect to the APIC
 #load_settings()
 
 root = Tk()
-root.title('WIRELESS MAPIC')
+root.title('MAPIC GUI')
 root.wm_iconbitmap('MAPIC_utils/MAPIC.ico')
 
 I2Cframe = LabelFrame(root,text='I2C Digital Potentiometer Control')
@@ -60,13 +60,12 @@ polarityframe.grid(row=5,column=4,rowspan=2)
 histframe = LabelFrame(root, text='Graph Config')
 histframe.grid(row=7,column=1, columnspan=3,rowspan=5,sticky=NW)
 
-normfitframe = LabelFrame(root, text='Gaussian Fit')
-normfitframe.grid(row=7,column=4,columnspan=1,rowspan=1)
-
-
 #==================================================================================#
-# NORMAL FIT FRAME
+# GAUSSIAN FIT SECTION
+# The inputs for this are contained in the histogram section.
+# Fit a normal distribution to the histogram bins.
 #==================================================================================#
+
 nlowbound = StringVar()
 nhighbound = StringVar()
 
@@ -93,17 +92,6 @@ def normfit():
     biny = gaussian(binx,popt[0])
     ax.plot( binx, biny, color='r') #legend =r'$, \bar x = $' + str(apic.mean) + r'$, \sigma = $' + str(apic.std) + ', Resolution = ' + str((2*FWHMval)/apic.mean) )
 
-boundaries_label = Label(normfitframe, text = 'FIT BOUNDARIES')
-boundaries_label.grid(row=1,column=1,columnspan=3)
-
-normal_high_bound = Entry(normfitframe,textvariable=nhighbound, width=8)
-normal_high_bound.grid(row=2,column=3)
-
-to_divider = Label(normfitframe, text='to')
-to_divider.grid(row=2,column=2)
-
-normal_low_bound = Entry(normfitframe,textvariable=nlowbound, width=8)
-normal_low_bound.grid(row=2,column=1)
 
 #==================================================================================#
 # I2C TOOLS FRAME:
@@ -369,6 +357,13 @@ setbutton.grid(row=3,column=4)
 savebutton = Button(histframe, text='SAVE', command=savefig, width = 5)
 savebutton.grid(row=4,column=4)
 
+
+normal_high_bound = Entry(histframe,textvariable=nhighbound, width=int(ewidth/2))
+normal_high_bound.grid(row=6,column=3)
+normal_low_bound = Entry(histframe,textvariable=nlowbound, width=int(ewidth/2))
+normal_low_bound.grid(row=6,column=2)
+
+
 t_label = Label(histframe, text = 'TITLE:')
 t_label.grid(row=1,column=1,sticky=W)
 x_label = Label(histframe, text = 'X AXIS:')
@@ -379,6 +374,9 @@ bins_label = Label(histframe, text= 'BINS:')
 bins_label.grid(row=4,column=1,sticky=W)
 bound_label = Label(histframe, text='BOUNDS')
 bound_label.grid(row=5,column=1,sticky=W)
+normfitbounds_label = Label(histframe, text='NORMFIT')
+normfitbounds_label.grid(row=6,column=1,sticky=W)
+
 
 #==================================================================================#
 # CALIBRATION FRAME
@@ -463,7 +461,7 @@ def savesettings():
 
 # create a pulldown menu, and add it to the menu bar
 filemenu = Menu(menubar, tearoff=0)
-filemenu.add_command(label='Load',command=setup_from_saved)
+filemenu.add_command(label='Load',command=load_settings)
 filemenu.add_command(label='Save', command=savesettings)
 filemenu.add_separator()
 filemenu.add_command(label="Exit", command=quit)
