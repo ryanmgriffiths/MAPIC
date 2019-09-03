@@ -32,13 +32,13 @@ ti = pyb.Timer(2,freq=1000000)          # init timer for interrupts
 # PIN SETUP AND INITIAL POLARITY/INTERRUPT MODE
 Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
 Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
-adc = ADC(Pin('X12'), False)                   # define ADC pin for pulse stretcher measurement
-#calibadc = ADC(Pin('X3'))               # define ADC pin for measuring shaper voltage
+adc = ADC(Pin('X12'), False)            # define ADC pin for pulse stretcher measurement
+#calibadc = ADC(Pin('X3'))              # define ADC pin for measuring shaper voltage
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
 pin_mode.value(1)                       # low -> automatic pulse clearing, high -> manual pulse clear
 clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
 polarpin = Pin('X6', Pin.OUT)           # define pin that chooses polarity   
-testpulsepin = Pin('X11',Pin.OUT)       # pin to enable internal test pulses on APIC
+testpulsepin = Pin('X4',Pin.OUT)        # pin to enable internal test pulses on APIC
 polarpin.value(0)                       # set to 1 for positive polarity
 
 # DATA STORAGE AND COUNTERS
@@ -157,11 +157,10 @@ def rateaq():
     ratecounter=0
     a=utime.ticks_ms()
     rateint.enable()
-    utime.sleep(3)
+    utime.sleep(4)
     rateint.disable()
     
     b = utime.ticks_ms()-a
-    
     finalrate = round((ratecounter/(b/1000)))
     finalratebyte = finalrate.to_bytes(4,'little',False)
     s.sendto(finalratebyte,destipv4)
@@ -228,21 +227,17 @@ def cb(line):
     micropython.schedule(callback,'a')
 
 
-# ENABLE INTERRUPT CHANNELS
-irqstate=pyb.disable_irq()                  # disable all interrupts during initialisation
-#calibint = ExtInt('X1',ExtInt.IRQ_RISING,
-#    pyb.Pin.PULL_NONE,cbcal)               # calibration routine interrupts on pin X1
-#calibint.disable()
-
-extint = ExtInt('X2',ExtInt.IRQ_RISING,
-    pyb.Pin.PULL_NONE,cb)                   # interrupts for ADC pulse DAQ on pin X2
-extint.disable()
-
-rateint = ExtInt('X4',ExtInt.IRQ_RISING,
-    pyb.Pin.PULL_NONE,ratecount)            # interrupts to measure sample activity on pin X4
+# ENABLE GPIO INTERRUPTs
+irqstate=pyb.disable_irq()                      # disable all interrupts during initialisation
+rateint = ExtInt('X1', ExtInt.IRQ_RISING,
+    pyb.Pin.PULL_NONE, rateaq)                  # rate measurement interrupts on pin X1
 rateint.disable()
 
-pyb.enable_irq(irqstate)                    # re-enable irqs
+extint = ExtInt('X2',ExtInt.IRQ_RISING,
+    pyb.Pin.PULL_NONE,cb)                       # interrupts for ADC pulse DAQ on pin X2
+extint.disable()
+
+pyb.enable_irq(irqstate)                        # re-enable interrupts
 
 #==================================================================================#
 # C ADC data stream method
