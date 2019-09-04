@@ -71,45 +71,43 @@ Note that steps other than the final two only need to be carried out once to set
 
 ## Custom Micropython Code
 
-Added a new custom function to ```adc.c``` called ```adc.read_DMA```. This function enables ADC peakfinding with the analog watchdog from the STM32 HAL Drivers. Peaks will be sampled up to num_samples and the data continuously streamed out via UDP to an IPV4 address. In single ADC mode:
+Added a new custom functions to ```adc.c```. There have also been some changes to ADC class in order to facilitate changing the ADC mode. To set up our ADC object we use the code:
 
 ```python
 # Necessary imports
 from pyb import ADC
 from machine import Pin
 
-adcpin = Pin("X12")             # set up ADC pin object on pin X12
-adc = ADC(adcpin, False)        # create ADC object with the ADC pin, triple mode false
+adcpin = Pin("X12")             # set up ADC pin object on pin PIN
+adc = ADC(adcpin, mode)         # create ADC object with the ADC pin, triple mode false
 
-adc.read_DMA(num_samples,ipv4)
-# adc.read_DMA(num_samples,ipv4)
+# mode can be "SingleDMA", "TripleDMA", "Single".
+# "Single" -> Can use adc.read_timed 
+# "SingleDMA" -> Can use adc.read_dma
+# "TripleDMA" -> Can use adc.read_interleaved
+```
+
+Two more sampling modes have been added in the custom firmware, called ```read_dma``` and ```read_interleaved```.
+
+```python
+adc = ADC(adcpin, "TripleDMA")      # create ADC object with the ADC pin, triple mode
+adc.read_interleaved(num_samples,ipv4)
+# adc.read_interleaved(num_samples,ipv4)
 # num_samples : integer number of peaks to sample, ideally multiple of 360
 # ipv4 : IPV4 address tuple e.g. ("192.168.1.1",5000) 
 # returns nothing
-```
 
-One also has the option of configuring the DMA in triple interleaved mode, to do so, we start use similar code:
-
-```python
-# Necessary imports
-from pyb import ADC
-from machine import Pin
-
-adcpin = Pin("X12")             # set up ADC pin object on pin X12
-adc = ADC(adcpin, True)         # create ADC object with the ADC pin, triple mode true
-
-adc.read_interleaved(num_samples,ipv4)
+adc = ADC(adcpin, "SingleDMA")      # create ADC object with the ADC pin, triple mode
+adc.read_dma(num_samples,ipv4)
 # adc.read_interleaved(num_samples,ipv4)
 # num_samples : integer number of peaks to sample, ideally multiple of 360
 # ipv4 : IPV4 address tuple e.g. ("192.168.1.1",5000) 
 # returns nothing
 ```
 
-To switch the mode halfway through a program, one must first parse the following set of commands 
-
 ```python
-adc.deinit()            # deinit the adc peripheral, clear configuration
-adc = ADC(adcpin, mode) # reinitialise the adc object with desired mode
+adc.deinit_setup()            # deinit the adc peripheral, clear configuration
+adc = ADC(adcpin, mode)       # reinitialise the adc object with desired mode
 ```
 
 ## Operation
