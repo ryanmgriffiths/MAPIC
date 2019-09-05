@@ -387,27 +387,27 @@ def f(x,a,b,c):
     f(x,a,b,c)\n
     Arguments:\n
     \t x: x axis data
-    \t a: x**2 fit param
+    \t a: x**2 coefficient
     \t b: gradient fit param
     \t c: offset fit param'''
     return a*x**2 + b*x + c
 
 def calibrate():
     apic.calibration()
-    cf1, cf2  = curve_fit(f, apic.inputpulses, apic.outputpulses)
+    cf1, cf2  = sciop.curve_fit(f, apic.inputpulses, apic.outputpulses)
     a,b,c = cf1
     fig = plt.figure()
     global ax2
     ax2 = fig.add_subplot(122)
-    ax2.plot(apic.inputpulses,apic.outputpulses,label='raw data')
+    ax2.plot(apic.inputpulses,apic.outputpulses,label='Output/Input Transfer Curve', color='b')
     ax2.plot(apic.inputpulses,f(apic.inputpulses,a,b,c),
-        label='y=%fx^2 + %fx + %fc' % (a,b,c),linestyle='--')
+        label='y = %fx^2 + %fx + %fc' % (a,b,c),linestyle='--', color='r')
     ax2.legend()
     fig.savefig('calibration.png')
     # Set apic objects for the gain/offset of the fit
     apic.calibgradient = b
     apic.caliboffset = c
-    caliblabel.config(text='y=%sx^2+%sx+%s' % (str(a),str(b),str(c)))
+    #caliblabel.config(text='y=%fx^2+%fx+%f' % (a,b,c))
     apic.drain_socket()
 #    ADCout.config(state=NORMAL)
 
