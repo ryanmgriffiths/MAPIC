@@ -222,31 +222,31 @@ class APIC:
         '''Perform a calibration of the setup, arbitrary time and creates two items of the APIC class
         containing the data received.'''
         
-        self.sendcmd(5,0)
-
-        readout = bytearray(8)
-        readin = bytearray(8)
-        
-        # define lists to append input/output data to
-        self.outputpulses = []
-        self.inputpulses = []
-
+        self.sock.settimeout(5)
+        readm = array('H',[0]*720)
+        calibration_data = array("H",[])
         # while loop to take data from the ADC until a timeout
+        self.sendcmd(5,0)
         while True:
-
             try:
-                self.sock.recv_into(readout)
-                self.sock.recv_into(readin)
-                self.outputpulses.append(numpy.average(numpy.frombuffer(readout,dtype='unint16')))
-                self.inputpulses.append(numpy.average(numpy.frombuffer(readin,dtype='unint16')))
-
+                self.sock.recv_into(readm)
+                print(readm)
+                calibration_data.extend(readm)
             except:
-                print('Socket timeout!')
                 break
 
-        self.outputpulses = self.setunits(numpy.array(self.outputpulses),'mV')
-        self.inputpulses = self.setunits(numpy.array(self.inputpulses), 'mV')
-    
+        calibration_data = numpy.array(calibration_data)
+        calibration_data = calibration_data[calibration_data != 0]
+        calibration_data.shape = (int(len(calibration_data)/4),4)
+
+        calibration_data  = numpy.average(calibration_data, axis=1)
+        self.outputpulses = calibration_data[0::2]
+        self.inputpulses  = calibration_data[1::2]
+
+        self.outputpulses = self.setunits(self.outputpulses,'mV')
+        self.inputpulses  = self.setunits(self.inputpulses,'mV')
+        calibration_data  = numpy.array([])
+
 #===================================================================================================
 # ADC DAQ OPERATIONS
 #===================================================================================================
@@ -298,7 +298,7 @@ class APIC:
         \t rootwindow: tkinter.TK() object (root frame/window object)'''
 
         tick_count = 0
-        self.sockdma.setblocking(1)                             # blocking socket waits for data
+        self.sockdma.settimeout(5)                             # blocking socket waits for data
         self.samples = datpts                                   # update samples item
 
         progbar['value'] = 0
