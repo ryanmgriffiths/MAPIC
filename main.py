@@ -32,8 +32,10 @@ ti = pyb.Timer(2,freq=1000000)          # init timer for interrupts
 # PIN SETUP AND INITIAL POLARITY/INTERRUPT MODE
 Pin('PULL_SCL', Pin.OUT, value=1)       # enable 5.6kOhm X9/SCL pull-up
 Pin('PULL_SDA', Pin.OUT, value=1)       # enable 5.6kOhm X10/SDA pull-up
-adc = ADC(Pin('X12'), False)            # define ADC pin for pulse stretcher measurement
-#calibadc = ADC(Pin('X3'))              # define ADC pin for measuring shaper voltage
+adcpin = Pin("X12")
+adc = ADC(adcpin, "SingleDMA")          # define ADC pin for pulse stretcher measurement
+calibpin = Pin("X3")                    # ADC pin for calibration
+calibadc = 0                            
 pin_mode = Pin('X8', Pin.OUT)           # define pulse clearing mode pin
 pin_mode.value(1)                       # low -> automatic pulse clearing, high -> manual pulse clear
 clearpin = Pin('X7',Pin.OUT)            # choose pin used for manually clearing the pulse once ADC measurement is complete
@@ -42,12 +44,14 @@ testpulsepin = Pin('X4',Pin.OUT)        # pin to enable internal test pulses on 
 polarpin.value(0)                       # set to 1 for positive polarity
 
 # DATA STORAGE AND COUNTERS
-sendbuf = array('H',[500])
+sendbuf = array('H',[720])              # 1440 byte buffer for calibration routine
 data = array('H',[0]*4)                 # buffer for writing adc interrupt data from adc.read_timed() in calibration() and ADC_IT_poll()
 calibdata = array('H',[0]*4)            # buffer to store ADC data from calibadc
 count=0                                 # counter for pulses read
+peakcount = 0
 ratecounter = 0                         # counter for rate measurements
 STATE = "STARTUP"                       # state variable for applying startup settings etc. 
+ADC_STATE = "SingleDMA"                 # monitor state of ADC configs
 
 # SET UP WIRELESS ACCESS POINT
 wl_ap = network.WLAN(1)                 # init wlan object
@@ -72,6 +76,17 @@ print("SOCKET BOUND")
 def checkstate():
     a = STATE.encode('utf-8')
     s.sendto(a, destipv4)
+
+def adc_setstate(state):
+    #assert(state == 'SingleDMA' or state == "TripleDMA" or state == "Single" or state =="NONE")
+    global ADC_STATE
+    if state != ADC_STATE:
+        ADC_STATE = state
+        global adc
+        adc.deinit_setup()
+        adc = ADC(adcpin,state)
+    else:
+        print("ADC STATE UNCHANGED")
 
 def setstate():
     utime.sleep(0.1)
@@ -128,23 +143,35 @@ def Is():
 #==================================================================================#
 # CALIBRATION CURVE CODE FIXME: Find a way to measure this properly
 #==================================================================================#
-"""
+
+
 def calibrate():
     global calibint
-    #clearpin.value(1)
-    #clearpin.value(0)
+    global count
+    global calibadc
+    count = 0                               # reset counter
+    adc_setstate("Single")                  # set state of adc obj to mode Single
+    calibadc = ADC(calibpin, "Single")      # init the second ADC in mode Single
     calibint.enable()
-    utime.sleep(10)
+    utime.sleep(10)                         # 10s of calibration
     calibint.disable()
 
 def cbcal(line):
-    #adc.read_timed(data,t2)
-    s.sendto(data,destipv4)
-    #clearpin.value(1)
-    #clearpin.value(0)
-    calibadc.read_timed(calibdata,t2)
-    s.sendto(calibdata,destipv4)
-"""
+    global count
+    # Take measurements
+    adc.read_timed(data,ti)
+    calibadc.read_timed(calibdata,ti)
+    
+    # Add data to UDP packet buffer
+    sendbuf[4*count:4*count+4] = data
+    sendbuf[4*(count+1):4*(count+1)+4] = calibdata
+    count += 1
+
+    # send UDP buffer + reset counter
+    if count == 90:
+        s.sendto(sendbuf,destipv4)
+        count = 0
+
 #==================================================================================#
 # RATE MEASUREMENT CODE
 #==================================================================================#
@@ -177,18 +204,16 @@ def ratecount(line):
 # samples mnum peaks, uses schedule to delay measurements for               
 # concurrent interrupts.                                
 #==================================================================================#
-
+"""
 def ADC_IT_poll():
-    
     global extint
     global count
     count = 0
-    
     utime.sleep(0.5)    
     msg, addr = s.recvfrom(8)
     mnum = int.from_bytes(msg,'little')
     mnum=mnum*1.2
-
+    adc_setstate("Single")
     utime.sleep(1)
     extint.enable()
     
@@ -201,11 +226,9 @@ def ADC_IT_poll():
 
 # ISR CALLBACK FUNCTION
 def callback(arg):
-    
     extint.disable()
     global count                    # reference the global count counter
     adc.read_timed(data,ti)         # 4 microsecond measurement from ADC at X12,
-    
     pos = (4*count)%500
     
     if pos == 124:
@@ -225,17 +248,18 @@ def callback(arg):
 # that occur during ISR callback - interrupting usocket transfer is v. bad.
 def cb(line):
     micropython.schedule(callback,'a')
-
+"""
 
 # ENABLE GPIO INTERRUPTs
 irqstate=pyb.disable_irq()                      # disable all interrupts during initialisation
+
 rateint = ExtInt('X1', ExtInt.IRQ_RISING,
     pyb.Pin.PULL_NONE, rateaq)                  # rate measurement interrupts on pin X1
 rateint.disable()
 
-extint = ExtInt('X2',ExtInt.IRQ_RISING,
-    pyb.Pin.PULL_NONE,cb)                       # interrupts for ADC pulse DAQ on pin X2
-extint.disable()
+calibint = ExtInt('X2',ExtInt.IRQ_RISING,
+    pyb.Pin.PULL_NONE,cbcal)                       # interrupts for ADC pulse DAQ on pin X2
+calibint.disable()
 
 pyb.enable_irq(irqstate)                        # re-enable interrupts
 
@@ -248,7 +272,9 @@ pyb.enable_irq(irqstate)                        # re-enable interrupts
 def read_DMA():
     msg = s.recv(4)
     mnum = int.from_bytes(msg,'little')
-    mnum = mnum+1000
+    mnum = mnum
+    print(mnum)
+    adc_setstate("SingleDMA")
     adc.read_dma(mnum)
 
 #==================================================================================#
