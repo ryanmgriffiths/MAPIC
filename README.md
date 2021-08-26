@@ -41,7 +41,7 @@ $ pip install <module>
 ```
 ## Flashing Micropython Firmware
 
-This repo relies on a customised fork of the micropython Github found [here](https://github.com/gyr0code/micropython). In order to flash new firmware to the Pyboard D SF3W board, you need to have an ARM compiler installed, the recommended package is arm-none-eabi-gcc. This can be installed through the command,
+This repo relies on a customised fork of the micropython Github found [here](https://github.com/gyr0code/micropython), specifically the mpdma branch . In order to flash new firmware to the Pyboard D SF3W board, you need to have an ARM compiler installed, the recommended package is arm-none-eabi-gcc. This can be installed through the command,
 ```shell
 $ sudo apt-get install arm-none-eabi-gcc
 ```
